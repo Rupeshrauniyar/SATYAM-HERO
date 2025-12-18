@@ -8,9 +8,12 @@ const AppProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const checkUser = async () => {
     try {
-      const response = await axios.post(`http://localhost:3000/api/check`, {
-        token: localStorage.getItem("token"),
-      });
+      const response = await axios.post(
+        `https://messageadministrative.onrender.com/api/check`,
+        {
+          token: localStorage.getItem("token"),
+        }
+      );
       console.log(response);
       if (response.status === 200 && response.data.success) {
         setUser(response.data.user);

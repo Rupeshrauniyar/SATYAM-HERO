@@ -9,7 +9,9 @@ const Admin = () => {
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        const res = await axios.get("http://localhost:3000/api/messages");
+        const res = await axios.get(
+          "https://messageadministrative.onrender.com/api/messages"
+        );
         setMessages(res.data.messages);
       } catch (err) {
         setError("Failed to fetch messages");

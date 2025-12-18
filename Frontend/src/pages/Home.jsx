@@ -9,10 +9,13 @@ const Home = () => {
   const handleSend = async () => {
     try {
       setLoading(true);
-      const response = await axios.post("http://localhost:3000/api/send", {
-        message: message,
-        userId: user._id,
-      });
+      const response = await axios.post(
+        "https://messageadministrative.onrender.com/api/send",
+        {
+          message: message,
+          userId: user._id,
+        }
+      );
       if (response.status === 200 && response.data.success) {
         setLoading(false);
         toast.success("Message sent");
