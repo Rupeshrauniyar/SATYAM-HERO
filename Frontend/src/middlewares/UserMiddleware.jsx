@@ -1,27 +1,26 @@
 import React, { useContext } from "react";
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Navigate, Outlet } from "react-router-dom";
 import { AppContext } from "../contexts/AppContext";
+import { Loader2 } from "lucide-react";
 
 const UserMiddleware = () => {
-  const { user, isAuthenticated, isLoading } = useContext(AppContext);
-  const location = useLocation();
+  const { isAuthenticated, isLoading, user } = useContext(AppContext);
+
   if (isLoading) {
-    return <div>Loading...</div>;
-  }
-  if (!isAuthenticated) {
-    return <Navigate to="/signin" />;
-  }
-  if (user?.role === "admin" && !location.pathname.startsWith("/admin")) {
     return (
-      <Navigate
-        to="/admin"
-        replace
-      />
+      <div className="fixed top-0 left-0 w-full h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin" size={24} />
+      </div>
     );
   }
-
-  if (location.pathname === "/admin" && user?.role !== "admin") {
-    return <Navigate to="/" />;
+  if (!isAuthenticated) {
+    return <Navigate to="/signin" replace />;
+  }
+  if (!user) {
+    return <Navigate to="/signin" replace />;
+  }
+  if (user.role === "gov") {
+    return <Navigate to="/gov" replace />;
   }
   return (
     <>

@@ -3,13 +3,12 @@ export const AppContext = createContext();
 import axios from "axios";
 const AppProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const checkUser = async () => {
     try {
       const response = await axios.post(
-        `https://messageadministrative.onrender.com/api/check`,
+        `${import.meta.env.VITE_BACKEND_URL}/api/auth/check`,
         {
           token: localStorage.getItem("token"),
         }
@@ -39,8 +38,7 @@ const AppProvider = ({ children }) => {
       value={{
         user,
         setUser,
-        isAdmin,
-        setIsAdmin,
+       
         isLoading,
         setIsLoading,
         isAuthenticated,

@@ -1,118 +1,96 @@
 import React, { useContext, useState } from "react";
+
 import axios from "axios";
-import { Link, useNavigate } from "react-router-dom";
-import { toast, ToastContainer } from "react-toastify";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { AppContext } from "../contexts/AppContext";
-
-const Signup = () => {
-  const { setUser, setIsAuthenticated } = useContext(AppContext);
+import { useNavigate } from "react-router-dom";
+const PhoneAuth = () => {
+  const [loading, setLoading] = useState(false);
+  const { user, setUser, setIsAuthenticated } = useContext(AppContext);
   const navigate = useNavigate();
-
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-  });
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
+  const handleSubmit = async () => {
     try {
       const response = await axios.post(
-        "https://messageadministrative.onrender.com/api/signup",
-        formData
+        `${import.meta.env.VITE_BACKEND_URL}/api/auth/signup`,
+        { name: user?.name, phone: user?.phone_number }
       );
-
-      if (response.data.success) {
-        const { token, user } = response.data;
-
-        // save token & user
-        localStorage.setItem("token", token);
-        localStorage.setItem("user", JSON.stringify(user));
-
-        // update context
-        setUser(user);
+      if (response.status === 200 && response.data.user.verified) {
+        localStorage.setItem("token", response.data.token);
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+        setUser(response.data.user);
         setIsAuthenticated(true);
-
-        toast.success("Account created successfully");
-        if (user.role === "admin") {
-          navigate("/admin");
-        }
         navigate("/");
       } else {
-        toast.error(response.data.error || "Signup failed");
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || "Something went wrong");
+      console.error(error);
+      // alert("Invalid OTP");
+    } finally {
+      setLoading(false);
     }
   };
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900">
-      <ToastContainer />
-
-      <form
-        onSubmit={handleSubmit}
-        className="w-96 p-6 rounded-2xl bg-white/10 backdrop-blur-lg shadow-xl space-y-4"
-      >
-        <h2 className="text-2xl font-semibold text-white text-center">
-          Create Account
-        </h2>
-
-        <input
-          type="text"
-          name="name"
-          placeholder="Full Name"
-          value={formData.name}
-          onChange={handleChange}
-          required
-          className="w-full px-4 py-3 rounded-xl bg-white/90 outline-none focus:ring-2 focus:ring-cyan-400"
-        />
-
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={handleChange}
-          required
-          className="w-full px-4 py-3 rounded-xl bg-white/90 outline-none focus:ring-2 focus:ring-cyan-400"
-        />
-
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={formData.password}
-          onChange={handleChange}
-          required
-          className="w-full px-4 py-3 rounded-xl bg-white/90 outline-none focus:ring-2 focus:ring-cyan-400"
-        />
-        <span className="flex gap-1 text-gray-200">
-          <p>Already have an account?</p>
-          <Link
-            to="/signin"
-            className="text-blue-400"
-          >
-            Signin
-          </Link>
+    <div className="min-h-screen flex items-center justify-center ">
+      <div className="w-full max-w-sm  ">
+        <span className="flex flex-col items-center justify-center text-center">
+          <h2 className="text-3xl font-bold text-center ">
+            Enter your details
+          </h2>
+          {/* <p></p> */}
+          <p className="text-gray-500 text-sm mb-2">
+            We will use this information to create your account
+          </p>
         </span>
-        <button
-          type="submit"
-          className="w-full py-3 rounded-xl text-white font-semibold bg-gradient-to-r from-cyan-400 to-blue-500 hover:shadow-lg hover:shadow-cyan-500/40 active:scale-95 transition"
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSubmit();
+          }}
         >
-          Sign Up
-        </button>
-      </form>
+          <div className="flex  gap-2">
+            <input
+              type="text"
+              placeholder="Enter your name"
+              value={user?.name}
+              onChange={(e) => setUser({ ...user, name: e.target.value })}
+              className="
+            w-full
+            px-4
+            py-3
+            mb-4
+            border
+            border-gray-300
+            rounded-xl
+            text-sm
+            outline-none
+            focus:border-black
+            hover:border-black
+            transition
+          "
+            />
+          </div>
+          {loading ? (
+            <button
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2 bg-black text-white py-3 rounded-2xl font-medium hover:opacity-90 disabled:opacity-50 transition"
+            >
+              <Loader2 className="animate-spin" />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2 bg-black text-white py-3 rounded-2xl font-medium hover:opacity-90 disabled:opacity-50 transition"
+            >
+              Continue
+              <ArrowRight size={18} />
+            </button>
+          )}
+        </form>
+      </div>
     </div>
   );
 };
 
-export default Signup;
+export default PhoneAuth;
