@@ -31,7 +31,7 @@ const PhoneAuth = () => {
   };
   return (
     <div className="min-h-screen flex items-center justify-center ">
-      <div className="w-full max-w-sm  ">
+      <div className="w-screen max-w-xl px-2 ">
         <span className="flex flex-col items-center justify-center text-center">
           <h2 className="text-3xl font-bold text-center ">
             Enter your details

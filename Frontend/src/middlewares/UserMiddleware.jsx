@@ -1,10 +1,11 @@
 import React, { useContext } from "react";
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { AppContext } from "../contexts/AppContext";
 import { Loader2 } from "lucide-react";
 
 const UserMiddleware = () => {
   const { isAuthenticated, isLoading, user } = useContext(AppContext);
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -13,11 +14,11 @@ const UserMiddleware = () => {
       </div>
     );
   }
-  if (!isAuthenticated) {
-    return <Navigate to="/signin" replace />;
-  }
-  if (!user) {
-    return <Navigate to="/signin" replace />;
+  if (!isAuthenticated || !user) {
+    const redirect = encodeURIComponent(
+      location.pathname + location.search,
+    );
+    return <Navigate to={`/signin?redirect=${redirect}`} replace />;
   }
   if (user.role === "gov") {
     return <Navigate to="/gov" replace />;

@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Mta</string>
-    <string name="title_activity_main">Mta</string>
-    <string name="package_name">com.mta.app</string>
-    <string name="custom_url_scheme">com.mta.app</string>
+    <string name="app_name">CivicReport</string>
+    <string name="title_activity_main">CivicReport</string>
+    <string name="package_name">com.civicreport.app</string>
+    <string name="custom_url_scheme">com.civicreport.app</string>
 </resources>

@@ -4,7 +4,7 @@
     "type": "APK",
     "kind": "Directory"
   },
-  "applicationId": "com.mta.app",
+  "applicationId": "com.civicreport.app",
   "variantName": "release",
   "elements": [
     {

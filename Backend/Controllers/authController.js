@@ -32,36 +32,57 @@ const checkAuth = async (req, res) => {
     });
   }
 };
-// SIGN IN CONTROLLER
-const signin = async (req, res) => {
+// CHECK PHONE — lookup only, does not create a user
+const checkPhone = async (req, res) => {
   const { phone } = req.body;
 
   try {
     const user = await User.findOne({ phone_number: phone });
 
-    if (!user || !user.verified) {
-      const newUser = await User.create({
-        phone_number: phone,
-      });
-      const token = jwt.sign({ _id: newUser._id }, process.env.JWT);
+    if (user) {
       return res.status(200).json({
-        user: newUser,
-        token,
-        message: "Signedin Successfully",
+        exists: true,
+        user: {
+          name: user.name,
+          phone_number: user.phone_number,
+        },
       });
-    } else if (user && user.verified) {
+    }
+
+    return res.status(200).json({ exists: false });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+// SIGN IN CONTROLLER
+const signin = async (req, res) => {
+  const { phone,name } = req.body;
+
+  try {
+    let user = await User.findOne({ phone_number: phone });
+
+    if (!user) {
+      user = await User.create({ phone_number: phone,name:name });
+    } else if (user.verified) {
       const token = jwt.sign({ _id: user._id }, process.env.JWT);
       return res.status(200).json({
         user,
         token,
         message: "Signedin Successfully",
       });
-    } else {
-      return res.status(500).json({
-        success: false,
-        message: "Unable to signin.",
-      });
     }
+
+    const token = jwt.sign({ _id: user._id }, process.env.JWT);
+    return res.status(200).json({
+      user,
+      token,
+      message: "Signedin Successfully",
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({
@@ -106,4 +127,4 @@ const signup = async (req, res) => {
     });
   }
 };
-module.exports = { checkAuth, signin, signup };
+module.exports = { checkAuth, checkPhone, signin, signup };

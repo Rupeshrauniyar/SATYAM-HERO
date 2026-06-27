@@ -2,6 +2,12 @@ const express = require("express");
 const {
   createReport,
   getReport,
+  getReportById,
+  getAuthorityReports,
+  getComments,
+  addComment,
+  likeComment,
+  trackShare,
   editReport,
   deleteReport,
   upvoteReport,
@@ -17,6 +23,12 @@ router.post("/upvote", UserMiddleware, upvoteReport);
 router.post("/downvote", UserMiddleware, downvoteReport);
 router.post("/updateReportStatus", UserMiddleware, updateStatus);
 router.get("/get", getReport);
+router.get("/getAuthority", getAuthorityReports);
+router.get("/single/:reportId", getReportById);
+router.get("/comments/:reportId", getComments);
+router.post("/comment", UserMiddleware, addComment);
+router.post("/comment/like", UserMiddleware, likeComment);
+router.post("/share", trackShare);
 router.post("/getMy", UserMiddleware, getMyReport);
 router.post("/delete", deleteReport);
 router.post("/edit", editReport);

@@ -25,7 +25,7 @@ const Navbar = () => {
         }
       >
         <Icon size={24} />
-        <span>{label}</span>
+        {/* <span>{label}</span> */}
       </NavLink>
     );
   };

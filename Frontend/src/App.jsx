@@ -3,8 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import AppProvider from "./contexts/AppContext";
 
 // layouts
-import UserLayout from "./layouts/UserLayout";
-import GovLayout from "./layouts/GovLayout";
+import AppLayout from "./layouts/AppLayout";
 import PublicLayout from "./layouts/PublicLayout";
 
 // middlewares
@@ -22,12 +21,13 @@ import Settings from "./pages/Settings";
 // gov pages
 import GovHome from "./pages_gov/GovHome";
 import GovSearch from "./pages_gov/GovSearch";
+import GovCreate from "./pages_gov/GovCreate";
 import GovDashboard from "./pages_gov/GovDashboard";
 import GovProfile from "./pages_gov/GovProfile";
 import GovSettings from "./pages_gov/GovSettings";
 
 // auth
-import Signin from "./pages/Signin";
+import Signinv2 from "./pages/Signinv2";
 import Signup from "./pages/Signup";
 
 const App = () => {
@@ -37,7 +37,7 @@ const App = () => {
         <Routes>
           {/* USER APP */}
           <Route element={<UserMiddleware />}>
-            <Route element={<UserLayout />}>
+            <Route element={<AppLayout />}>
               <Route path="/" element={<Home />} />
               <Route path="/create" element={<Create />} />
               <Route path="/dashboard" element={<Dashboard />} />
@@ -48,9 +48,11 @@ const App = () => {
 
           {/* GOV APP */}
           <Route element={<GovMiddleware />}>
-            <Route element={<GovLayout />}>
+            <Route element={<AppLayout />}>
               <Route path="/gov" element={<GovHome />} />
               <Route path="/gov/search" element={<GovSearch />} />
+              <Route path="/gov/create" element={<GovCreate />} />
+
               <Route path="/gov/dashboard" element={<GovDashboard />} />
               <Route path="/gov/profile" element={<GovProfile />} />
               <Route path="/gov/settings" element={<GovSettings />} />
@@ -59,7 +61,7 @@ const App = () => {
 
           {/* PUBLIC */}
           <Route element={<PublicLayout />}>
-            <Route path="/signin" element={<Signin />} />
+            <Route path="/signin" element={<Signinv2 />} />
             <Route element={<UnverifiedMiddleware />}>
               <Route path="/signup" element={<Signup />} />
             </Route>

@@ -2,7 +2,7 @@ import { Outlet } from "react-router-dom";
 
 export default function PublicLayout() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+    <div className="min-h-screen bg-x-bg">
       <Outlet />
     </div>
   );

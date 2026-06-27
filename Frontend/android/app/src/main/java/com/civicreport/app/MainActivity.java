@@ -1,4 +1,4 @@
-package com.mta.app;
+package com.civicreport.app;
 
 import com.getcapacitor.BridgeActivity;
 

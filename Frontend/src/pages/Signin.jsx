@@ -22,13 +22,18 @@ export default function PhoneAuth() {
   }, [popup]);
 
   const setupRecaptcha = () => {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(
-        auth,
-        "recaptcha-container",
-        { size: "invisible" }
-      );
+    if (window.recaptchaVerifier) {
+      window.recaptchaVerifier.clear();
+      window.recaptchaVerifier = null;
     }
+
+    window.recaptchaVerifier = new RecaptchaVerifier(
+      auth,
+      "recaptcha-container",
+      {
+        size: "invisible",
+      },
+    );
   };
 
   const sendOtp = async () => {
@@ -45,12 +50,14 @@ export default function PhoneAuth() {
       const confirmationResult = await signInWithPhoneNumber(
         auth,
         `+977${phone}`,
-        appVerifier
+        appVerifier,
       );
 
       setConfirmation(confirmationResult);
       setPopup("OTP sent successfully");
     } catch (err) {
+      alert(err.message);
+      console.log(err);
       setPopup("Failed to send OTP. Try again.");
     } finally {
       setLoading(false);
@@ -71,7 +78,7 @@ export default function PhoneAuth() {
 
       const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/auth/signin`,
-        { phone }
+        { phone },
       );
 
       localStorage.setItem("token", response.data.token);
@@ -81,6 +88,7 @@ export default function PhoneAuth() {
 
       navigate(response.data.user.verified ? "/" : "/signup");
     } catch (err) {
+      // alert(err.message);
       setPopup("Invalid OTP. Please try again.");
     } finally {
       setLoading(false);
@@ -88,14 +96,32 @@ export default function PhoneAuth() {
   };
 
   return (
-    <div className="min-h-screen  flex items-center justify-center px-4">
-      <div className="w-full   ">
-        <div className="text-center mb-6">
-          <div className="mx-auto w-12 h-12 rounded-full bg-black text-white flex items-center justify-center mb-3">
-            {confirmation ? <ShieldCheck /> : <Phone />}
-          </div>
-          <h1 className="text-2xl font-bold">Sign in</h1>
-          <p className="text-sm text-gray-500 mt-1">
+    <div className="min-h-screen  flex items-center justify-center ">
+      {popup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {" "}
+          <div
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+            onClick={() => setPopup(null)}
+          />{" "}
+          <div className="relative bg-white rounded-xl shadow-lg p-5 w-80 text-center animate-fadeIn">
+            {" "}
+            <button
+              onClick={() => setPopup(null)}
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700"
+            >
+              {" "}
+              <X size={16} />{" "}
+            </button>{" "}
+            <p className="text-gray-800 text-sm">{popup}</p>{" "}
+          </div>{" "}
+        </div>
+      )}
+      <div className="w-screen px-2 ">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-2xl font-semibold">Sign in</h1>
+          <p className="text-sm text-zinc-400 mt-1">
             {confirmation
               ? "Enter the OTP sent to your phone"
               : "We will send an OTP to verify your number"}
@@ -108,30 +134,29 @@ export default function PhoneAuth() {
               e.preventDefault();
               sendOtp();
             }}
-            className="space-y-4"
+            className="space-y-5"
           >
             <div className="flex gap-2">
               <input
                 disabled
                 value="+977"
-                className="w-20 rounded-xl border px-3 py-2 text-sm bg-gray-100"
+                className="w-20 rounded-md px-3 py-2 text-sm  border border-zinc-700"
               />
               <input
                 type="tel"
                 placeholder="Phone number"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="flex-1 rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-black"
+                className="flex-1 rounded-md px-3 py-2 text-sm  border border-zinc-700 outline-none focus:border-zinc-500"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-black text-white py-2.5 rounded-xl disabled:opacity-60"
+              className="w-full bg-black border border-zinc-700 py-2.5 rounded-md text-zinc-300 text-sm disabled:opacity-50"
             >
-              {loading && <Loader2 size={16} className="animate-spin" />}
-              Continue <ArrowRight size={16} />
+              {loading ? "Sending OTP…" : "Continue"}
             </button>
           </form>
         ) : (
@@ -140,46 +165,27 @@ export default function PhoneAuth() {
               e.preventDefault();
               verifyOtp();
             }}
-            className="space-y-4"
+            className="space-y-5"
           >
             <input
               type="number"
               placeholder="Enter 6-digit OTP"
               value={otp}
               onChange={(e) => setOtp(e.target.value)}
-              className="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-black"
+              className="w-full rounded-md px-3 py-2 text-sm  border border-zinc-700 outline-none focus:border-zinc-500"
             />
 
             <button
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-black text-white py-2.5 rounded-xl disabled:opacity-60"
+              className="w-full bg-black border border-zinc-700 py-2.5 rounded-md text-zinc-300 text-sm disabled:opacity-50"
             >
-              {loading && <Loader2 size={16} className="animate-spin" />}
-              Verify OTP <ArrowRight size={16} />
+              {loading ? "Verifying…" : "Continue"}
             </button>
           </form>
         )}
 
         <div id="recaptcha-container" />
       </div>
-
-      {popup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-            onClick={() => setPopup(null)}
-          />
-          <div className="relative bg-white rounded-xl shadow-lg p-5 w-80 text-center animate-fadeIn">
-            <button
-              onClick={() => setPopup(null)}
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700"
-            >
-              <X size={16} />
-            </button>
-            <p className="text-gray-800 text-sm">{popup}</p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

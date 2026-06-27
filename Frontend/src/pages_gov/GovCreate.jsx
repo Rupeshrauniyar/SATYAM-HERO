@@ -91,12 +91,12 @@ export default function CreateIssue() {
   return (
     <div>
       <div className="x-page-header">
-        <h1>Report an Issue</h1>
+        <h1>Create an Update</h1>
       </div>
 
       <div className="p-4">
         <p className="text-x-text-secondary text-sm mb-6">
-          Help authorities by reporting problems in your area.
+          Help by updating the public.
         </p>
 
         {error && (

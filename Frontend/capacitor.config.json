@@ -1,5 +1,5 @@
 {
-  "appId": "com.mta.app",
-  "appName": "Mta",
+  "appId": "com.civicreport.app",
+  "appName": "CivicReport",
   "webDir": "dist"
 }
