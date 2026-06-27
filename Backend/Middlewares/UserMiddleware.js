@@ -2,7 +2,7 @@ const JWT = require("jsonwebtoken");
 require("dotenv").config();
 const UserMiddleware = async (req, res, next) => {
   try {
-    const { token } = req.body;
+    const token = req.body?.token || req.headers?.authorization || req.query?.token;
     if (!token) {
       return res.status(404).json({ success: false, msg: "Invalid token" });
     }

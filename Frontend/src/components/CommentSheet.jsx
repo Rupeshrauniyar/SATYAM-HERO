@@ -37,6 +37,8 @@ export default function CommentSheet({
   const [submitting, setSubmitting] = useState(false);
   const [likingId, setLikingId] = useState(null);
   const [visible, setVisible] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [replyText, setReplyText] = useState("");
 
   useEffect(() => {
     if (!open || !report?._id) return;
@@ -128,6 +130,25 @@ export default function CommentSheet({
     }
   };
 
+  const handleReply = async (comment) => {
+    if (!replyText?.trim()) return;
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/report/comment/reply`,
+        { reportId: report._id, commentId: comment._id, text: replyText.trim(), token },
+      );
+      if (res.data.success) {
+        // update local comments state
+        setComments((prev) => prev.map((c) => (c._id === comment._id ? res.data.comment : c)));
+        setReplyText("");
+        setReplyingTo(null);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   if (!visible && !open) return null;
 
   return (
@@ -185,7 +206,7 @@ export default function CommentSheet({
                           {comment.text}
                         </p>
                       </div>
-                      <div className="x-comment-like-row">
+                      <div className="x-comment-like-row flex items-center gap-3">
                         <EngagePill
                           icon={Heart}
                           count={likeCount}
@@ -195,7 +216,45 @@ export default function CommentSheet({
                           onClick={() => handleLike(comment)}
                           disabled={likingId === comment._id}
                         />
+                        <button
+                          className="x-link text-sm"
+                          onClick={() => setReplyingTo(replyingTo === comment._id ? null : comment._id)}
+                        >
+                          Reply
+                        </button>
                       </div>
+
+                      {comment.replies?.length > 0 && (
+                        <div className="mt-3 space-y-3">
+                          {comment.replies.map((r) => (
+                            <div key={r._id} className="flex gap-3 items-start">
+                              <div className="x-avatar w-8 h-8 text-xs shrink-0">{r.userId?.name?.charAt(0)?.toUpperCase() || "?"}</div>
+                              <div className="flex-1 min-w-0">
+                                <div className="x-panel !p-3 !rounded-2xl">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold text-sm">{r.userId?.name || "User"}</span>
+                                    <span className="text-x-text-secondary text-xs">· {timeAgo(r.createdAt)}</span>
+                                  </div>
+                                  <p className="text-sm mt-1 leading-relaxed break-words">{r.text}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {replyingTo === comment._id && (
+                        <div className="mt-3 flex gap-2 items-center">
+                          <input
+                            type="text"
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            placeholder="Write a reply..."
+                            className="x-input flex-1 py-2 text-sm"
+                          />
+                          <button onClick={() => handleReply(comment)} className="x-btn x-btn-accent x-btn-sm">Reply</button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

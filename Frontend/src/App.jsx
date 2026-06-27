@@ -17,6 +17,7 @@ import Create from "./pages/Create";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
+import Search from "./pages/Search";
 
 // gov pages
 import GovHome from "./pages_gov/GovHome";
@@ -25,6 +26,8 @@ import GovCreate from "./pages_gov/GovCreate";
 import GovDashboard from "./pages_gov/GovDashboard";
 import GovProfile from "./pages_gov/GovProfile";
 import GovSettings from "./pages_gov/GovSettings";
+import Alerts from "./pages/Alerts";
+import Notifications from "./pages/Notifications";
 
 // auth
 import Signinv2 from "./pages/Signinv2";
@@ -43,6 +46,9 @@ const App = () => {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/search" element={<Search />} />
+              <Route path="/alerts" element={<Alerts />} />
+              <Route path="/notifications" element={<Notifications />} />
             </Route>
           </Route>
 
@@ -52,10 +58,11 @@ const App = () => {
               <Route path="/gov" element={<GovHome />} />
               <Route path="/gov/search" element={<GovSearch />} />
               <Route path="/gov/create" element={<GovCreate />} />
-
               <Route path="/gov/dashboard" element={<GovDashboard />} />
               <Route path="/gov/profile" element={<GovProfile />} />
               <Route path="/gov/settings" element={<GovSettings />} />
+              <Route path="/alerts" element={<Alerts />} />
+              <Route path="/notifications" element={<Notifications />} />
             </Route>
           </Route>
 

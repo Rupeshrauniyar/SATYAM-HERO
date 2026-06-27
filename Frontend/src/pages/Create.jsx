@@ -71,13 +71,18 @@ export default function CreateIssue() {
       const token = localStorage.getItem("token");
       const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/report/create`,
-        { formData, token, media: uploadedUrls },
+        { formData, media: uploadedUrls },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
       );
 
       if (response.status === 200) {
         setUser((prev) => ({
           ...prev,
-          reports: [...prev.reports, response.data.newReport._id],
+          reports: [...(prev.reports || []), response.data.newReport._id],
         }));
         navigate("/");
       }
@@ -139,7 +144,7 @@ export default function CreateIssue() {
                 className="x-select mt-1.5"
               >
                 <option value="">Select</option>
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((w) => (
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25].map((w) => (
                   <option key={w} value={w}>
                     Ward {w}
                   </option>

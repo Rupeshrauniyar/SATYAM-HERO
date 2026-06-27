@@ -14,13 +14,17 @@ app.use(express.static("public"));
   
 const authRoutes = require("./Routes/authRoutes");
 const reportRoutes = require("./Routes/reportRoutes");
+const govPostRoutes = require("./Routes/govPostRoutes");
 const govReportRoutes = require("./Routes/govReportRoutes");
 const govRoutes = require("./Routes/govRoutes");
+const notificationRoutes = require("./Routes/notificationRoutes");
   
 app.use("/api/auth", authRoutes);
 app.use("/api/report", reportRoutes);
+app.use("/api/gov/post", govPostRoutes);
 app.use("/api/gov/report", govReportRoutes);
 app.use("/api/gov/", govRoutes);
+app.use("/api/notification", notificationRoutes);
 
 app.listen(3000, (req,res) => {
   // console.log("Shrey") 

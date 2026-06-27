@@ -42,6 +42,8 @@ const Home = () => {
   const [pinnedReport, setPinnedReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState({});
+  const [selectedStatus, setSelectedStatus] = useState(null);
+  const [confirmIssue, setConfirmIssue] = useState(null);
   const [commentReport, setCommentReport] = useState(null);
   const [insightsReport, setInsightsReport] = useState(null);
   const [shareReport, setShareReport] = useState(null);
@@ -80,7 +82,7 @@ const Home = () => {
         const endpoint =
           feedTab === FEED_TABS.PUBLIC
             ? "/api/report/get"
-            : "/api/report/getAuthority";
+            : "/api/gov/post/updates";
 
         const response = await axios.get(
           `${import.meta.env.VITE_BACKEND_URL}${endpoint}`,
@@ -136,6 +138,32 @@ const Home = () => {
 
   const toggleDescription = (id) => {
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleStatusChange = (issue, newStatus) => {
+    setSelectedStatus(newStatus);
+    setConfirmIssue(issue);
+  };
+
+  const saveStatusChange = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/report/updateReportStatus`,
+        { status: selectedStatus, reportId: confirmIssue._id, token },
+      );
+      updateIssueInState(confirmIssue._id, (issue) => ({
+        ...issue,
+        status: selectedStatus,
+        changer: { name: (user && user.name) || "Government" },
+      }));
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update status");
+    } finally {
+      setConfirmIssue(null);
+      setSelectedStatus(null);
+    }
   };
 
   const updateIssueInState = (reportId, updater) => {
@@ -267,13 +295,18 @@ const Home = () => {
     feedTabs: FEED_TABS,
     expanded,
     onToggleDescription: toggleDescription,
-    onUpvote: handleUpvote,
-    onDownvote: handleDownvote,
-    onComment: setCommentReport,
-    onShare: setShareReport,
-    onInsights: setInsightsReport,
     timeAgo,
     statusBadge,
+    ...(feedTab === FEED_TABS.PUBLIC
+      ? {
+          onUpvote: handleUpvote,
+          onDownvote: handleDownvote,
+          onComment: setCommentReport,
+          onShare: setShareReport,
+          onInsights: setInsightsReport,
+          ...(user && user.role === "gov" ? { onChangeStatus: handleStatusChange } : {}),
+        }
+      : {}),
   };
 
   const showEmpty =
@@ -302,6 +335,22 @@ const Home = () => {
           onClick={() => setFeedTab(FEED_TABS.AUTHORITY)}
         />
       </div>
+
+      {confirmIssue && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setConfirmIssue(null)} />
+          <div className="relative bg-x-bg rounded-2xl border border-x-border w-full max-w-sm p-6 animate-fadeIn">
+            <h3 className="text-lg font-bold mb-2">Confirm status change</h3>
+            <p className="text-sm text-x-text-secondary mb-6">
+              Change &ldquo;{confirmIssue.title}&rdquo; to <strong>{selectedStatus}</strong>?
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmIssue(null)} className="x-btn x-btn-secondary flex-1">Cancel</button>
+              <button onClick={saveStatusChange} className="x-btn x-btn-accent flex-1">Save</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-32">

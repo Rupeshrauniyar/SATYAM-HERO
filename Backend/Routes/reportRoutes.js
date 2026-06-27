@@ -3,9 +3,10 @@ const {
   createReport,
   getReport,
   getReportById,
-  getAuthorityReports,
+  searchReports,
   getComments,
   addComment,
+  addReply,
   likeComment,
   trackShare,
   editReport,
@@ -23,10 +24,11 @@ router.post("/upvote", UserMiddleware, upvoteReport);
 router.post("/downvote", UserMiddleware, downvoteReport);
 router.post("/updateReportStatus", UserMiddleware, updateStatus);
 router.get("/get", getReport);
-router.get("/getAuthority", getAuthorityReports);
+router.get("/search", searchReports);
 router.get("/single/:reportId", getReportById);
 router.get("/comments/:reportId", getComments);
 router.post("/comment", UserMiddleware, addComment);
+router.post("/comment/reply", UserMiddleware, addReply);
 router.post("/comment/like", UserMiddleware, likeComment);
 router.post("/share", trackShare);
 router.post("/getMy", UserMiddleware, getMyReport);

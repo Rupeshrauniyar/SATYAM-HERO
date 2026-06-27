@@ -14,6 +14,7 @@ export default function CreateIssue() {
     description: "",
     ward: "",
     category: "",
+    postType: "update",
   });
 
   const [images, setImages] = useState([]);
@@ -70,16 +71,16 @@ export default function CreateIssue() {
 
       const token = localStorage.getItem("token");
       const response = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/report/create`,
+        `${import.meta.env.VITE_BACKEND_URL}/api/gov/post/create`,
         { formData, token, media: uploadedUrls },
       );
 
       if (response.status === 200) {
         setUser((prev) => ({
           ...prev,
-          reports: [...prev.reports, response.data.newReport._id],
+          reports: [...(prev.reports || []), response.data.post?._id || response.data.postId],
         }));
-        navigate("/");
+        navigate("/gov");
       }
     } catch {
       setError("Something went wrong. Please try again.");
@@ -91,7 +92,7 @@ export default function CreateIssue() {
   return (
     <div>
       <div className="x-page-header">
-        <h1>Create an Update</h1>
+        <h1>Create an Update — debug</h1>
       </div>
 
       <div className="p-4">
@@ -163,6 +164,19 @@ export default function CreateIssue() {
                 <option>Other</option>
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-bold text-x-text">Post Type *</label>
+            <select
+              name="postType"
+              value={formData.postType}
+              onChange={handleChange}
+              className="x-select mt-1.5"
+            >
+              <option value="update">Update (general information)</option>
+              <option value="alert">Alert (urgent notice)</option>
+            </select>
           </div>
 
           <div>

@@ -3,6 +3,9 @@ export const AppContext = createContext();
 import axios from "axios";
 const AppProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [language, setLanguage] = useState(
+    () => localStorage.getItem("language") || "en",
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const checkUser = async () => {
@@ -11,9 +14,8 @@ const AppProvider = ({ children }) => {
         `${import.meta.env.VITE_BACKEND_URL}/api/auth/check`,
         {
           token: localStorage.getItem("token"),
-        }
+        },
       );
-      console.log(response);
       if (response.status === 200 && response.data.success) {
         setUser(response.data.user);
         setIsAuthenticated(true);
@@ -30,6 +32,15 @@ const AppProvider = ({ children }) => {
       setUser(null);
     }
   };
+
+  useEffect(() => {
+    localStorage.setItem("language", language);
+  }, [language]);
+
+  const toggleLanguage = () => {
+    setLanguage((prev) => (prev === "en" ? "ne" : "en"));
+  };
+
   useEffect(() => {
     checkUser();
   }, []);
@@ -38,7 +49,8 @@ const AppProvider = ({ children }) => {
       value={{
         user,
         setUser,
-       
+        language,
+        toggleLanguage,
         isLoading,
         setIsLoading,
         isAuthenticated,

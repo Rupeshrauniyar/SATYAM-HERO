@@ -28,6 +28,7 @@ export default function ReportFeedItem({
   onComment,
   onShare,
   onInsights,
+  onChangeStatus,
   timeAgo,
   statusBadge,
   innerRef,
@@ -37,6 +38,7 @@ export default function ReportFeedItem({
   const userUpvotes = user?.upvotes || [];
   const userDownvotes = user?.downvotes || [];
   const userReports = user?.reports || [];
+  const author = issue.userId || issue.authorId || {};
 
   const hasUpvoted = hasId(userUpvotes, issue._id);
   const hasDownvoted = hasId(userDownvotes, issue._id);
@@ -60,11 +62,11 @@ export default function ReportFeedItem({
 
         <div className="x-feed-card-header">
           <div className="x-avatar">
-            {issue.userId?.name?.charAt(0)?.toUpperCase() || "?"}
+            {author?.name?.charAt(0)?.toUpperCase() || "?"}
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-bold text-[0.9375rem] truncate">
-              {issue.userId?.name || "User"}
+              {author?.name || "User"}
             </p>
             <p className="text-x-text-secondary text-xs mt-0.5">
               Ward {issue.ward_number} · {timeAgo(issue.createdAt)}
@@ -74,10 +76,10 @@ export default function ReportFeedItem({
 
         <div className="x-feed-card-body">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`x-badge ${statusBadge(issue.status)}`}>
+            {/* <span className={`x-badge ${statusBadge(issue.status)}`}>
               {issue.status}
-            </span>
-            <span className="text-x-text-secondary text-xs">{issue.category}</span>
+            </span> */}
+            {/* <span className="text-x-text-secondary text-xs">{issue.category}</span> */}
             {isMine && (
               <span className="text-x-accent text-xs font-semibold">Your report</span>
             )}
@@ -131,47 +133,71 @@ export default function ReportFeedItem({
             </p>
           )}
 
-          <div className="x-action-bar">
-            <EngagePill
-              icon={ArrowBigUp}
-              count={upvotes.length}
-              active={hasUpvoted}
-              variant="up"
-              label="Upvote"
-              onClick={() => onUpvote(issue._id)}
-              disabled={isMine}
-            />
-            <EngagePill
-              icon={ArrowBigDown}
-              count={downvotes.length}
-              active={hasDownvoted}
-              variant="down"
-              label="Downvote"
-              onClick={() => onDownvote(issue._id)}
-              disabled={isMine}
-            />
-            <EngagePill
-              icon={MessageCircle}
-              count={commentCount}
-              variant="comment"
-              label="Comments"
-              onClick={() => onComment(issue)}
-            />
-            <EngagePill
-              icon={Share2}
-              count={issue.shares || 0}
-              variant="share"
-              label="Share"
-              onClick={() => onShare(issue)}
-            />
-            <EngagePill
-              icon={BarChart2}
-              count={0}
-              variant="insight"
-              label="Insights"
-              onClick={() => onInsights(issue)}
-            />
-          </div>
+          {onUpvote || onDownvote || onComment || onShare || onInsights ? (
+            <div className="x-action-bar">
+              {onUpvote && (
+                <EngagePill
+                  icon={ArrowBigUp}
+                  count={upvotes.length}
+                  active={hasUpvoted}
+                  variant="up"
+                  label="Upvote"
+                  onClick={() => onUpvote(issue._id)}
+                  disabled={isMine}
+                />
+              )}
+              {onDownvote && (
+                <EngagePill
+                  icon={ArrowBigDown}
+                  count={downvotes.length}
+                  active={hasDownvoted}
+                  variant="down"
+                  label="Downvote"
+                  onClick={() => onDownvote(issue._id)}
+                  disabled={isMine}
+                />
+              )}
+              {onComment && (
+                <EngagePill
+                  icon={MessageCircle}
+                  count={commentCount}
+                  variant="comment"
+                  label="Comments"
+                  onClick={() => onComment(issue)}
+                />
+              )}
+              {onShare && (
+                <EngagePill
+                  icon={Share2}
+                  count={issue.shares || 0}
+                  variant="share"
+                  label="Share"
+                  onClick={() => onShare(issue)}
+                />
+              )}
+              {onInsights && (
+                <EngagePill
+                  icon={BarChart2}
+                  count={0}
+                  variant="insight"
+                  label="Insights"
+                  onClick={() => onInsights(issue)}
+                />
+              )}
+            </div>
+          ) : null}
+          {onChangeStatus && (
+            <select
+              value={issue.status}
+              onChange={(e) => onChangeStatus(issue, e.target.value)}
+              className="x-select mt-3 text-sm py-2"
+            >
+              <option value={issue.status}>{issue.status}</option>
+              {["Pending", "Progress", "Resolved"].filter(s => s !== issue.status).map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
     </article>

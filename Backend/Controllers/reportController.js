@@ -1,35 +1,51 @@
 require("dotenv").config();
 const Report = require("../Models/ReportModel");
+const GovPost = require("../Models/GovPostModel");
 const User = require("../Models/UserModel");
+const Notification = require("../Models/NotificationModel");
 
 const reportPopulate = [
   { path: "userId changer", select: "name role -_id" },
   { path: "comments.userId", select: "name -_id" },
 ];
+const govPostPopulate = [{ path: "authorId", select: "name role -_id" }];
+
+const createNotification = async ({ userId, reportId, sourceUserId, type, message, commentId, replyId }) => {
+  if (!userId || !message) return;
+  const doc = { userId, reportId, sourceUserId, type, message };
+  if (commentId) doc.commentId = commentId;
+  if (replyId) doc.replyId = replyId;
+  return Notification.create(doc);
+};
 
 const createReport = async (req, res) => {
   try {
+    if (req.user.role === "gov") {
+      return res.status(403).json({
+        success: false,
+        message: "Government posts must be created via /api/gov/post/create",
+      });
+    }
+
     const { formData, media } = req.body;
     const userId = req.user._id;
-    console.log(userId);
-    console.log(formData);
 
     const newReport = await Report.create({
       title: formData.title,
       description: formData.description,
       category: formData.category,
-      ward_number: formData.ward, // or formData.ward if that’s what you sent
-      userId: userId, // attach user
+      postType: "issue",
+      ward_number: formData.ward,
+      userId,
       media,
     });
+
     await User.findOneAndUpdate(
       { _id: userId },
       {
         $addToSet: { reports: newReport._id },
       },
     );
-
-    console.log(newReport);
 
     res.status(200).json({ success: true, newReport });
   } catch (err) {
@@ -52,7 +68,11 @@ const getReport = async (req, res) => {
 const getReportById = async (req, res) => {
   try {
     const { reportId } = req.params;
-    const report = await Report.findById(reportId).populate(reportPopulate);
+    let report = await Report.findById(reportId).populate(reportPopulate);
+
+    if (!report) {
+      report = await GovPost.findById(reportId).populate(govPostPopulate);
+    }
 
     if (!report) {
       return res.status(404).json({ success: false, message: "Report not found" });
@@ -67,20 +87,24 @@ const getReportById = async (req, res) => {
 
 const getAuthorityReports = async (req, res) => {
   try {
-    const govUsers = await User.find({ role: "gov" }).select("_id");
-    const govIds = govUsers.map((u) => u._id);
-
-    const Reports = await Report.find({
-      $or: [
-        { changer: { $in: govIds } },
-        { userId: { $in: govIds } },
-        { status: { $in: ["Progress", "Resolved"] } },
-      ],
-    })
+    const updates = await GovPost.find({ postType: "update" })
       .sort({ updatedAt: -1 })
-      .populate(reportPopulate);
+      .populate(govPostPopulate);
 
-    res.status(200).json({ Reports });
+    res.status(200).json({ Reports: updates });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false });
+  }
+};
+
+const getAlerts = async (req, res) => {
+  try {
+    const alerts = await GovPost.find({ postType: "alert" })
+      .sort({ createdAt: -1 })
+      .populate(govPostPopulate);
+
+    res.status(200).json({ success: true, reports: alerts });
   } catch (err) {
     console.log(err);
     res.status(500).json({ success: false });
@@ -94,6 +118,7 @@ const getComments = async (req, res) => {
       path: "comments.userId",
       select: "name -_id",
     });
+    if (report) await report.populate({ path: "comments.replies.userId", select: "name -_id" });
 
     if (!report) {
       return res.status(404).json({ success: false, message: "Report not found" });
@@ -136,11 +161,62 @@ const addComment = async (req, res) => {
     }
 
     const newComment = report.comments[report.comments.length - 1];
+    const sourceUser = await User.findById(userId).select("name");
+
+    if (report.userId.toString() !== userId.toString()) {
+      await createNotification({
+        userId: report.userId,
+        reportId,
+        sourceUserId: userId,
+        type: "comment",
+        message: `${sourceUser?.name || "Someone"} commented on your report.`,
+      });
+    }
 
     res.status(200).json({ success: true, comment: newComment });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false });
+  }
+};
+
+const searchReports = async (req, res) => {
+  try {
+    const { q } = req.query;
+    const query = (q || "").trim();
+    if (!query) {
+      return res.status(200).json({ success: true, reports: [] });
+    }
+
+    const conditions = [];
+    const normalized = query.toLowerCase();
+    const wardMatch = normalized.match(/ward\s*([0-9]+)/i) || normalized.match(/^([0-9]+)$/);
+
+    if (wardMatch) {
+      conditions.push({ ward_number: parseInt(wardMatch[1], 10) });
+    }
+
+    const textSearch = query.replace(/ward\s*[0-9]+/gi, "").trim();
+    if (textSearch) {
+      const regex = new RegExp(textSearch, "i");
+      conditions.push({
+        $or: [
+          { title: regex },
+          { description: regex },
+          { category: regex },
+        ],
+      });
+    }
+
+    const searchQuery = conditions.length === 0 ? {} : { $or: conditions };
+    const Reports = await Report.find(searchQuery)
+      .sort({ createdAt: -1 })
+      .populate(reportPopulate);
+
+    return res.status(200).json({ success: true, reports: Reports });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, reports: [] });
   }
 };
 
@@ -183,6 +259,22 @@ const likeComment = async (req, res) => {
     if (method === "push") {
       const already = comment.likes.some((id) => id.toString() === userId.toString());
       if (!already) comment.likes.push(userId);
+      // notify comment owner
+      try {
+        const sourceUser = await User.findById(userId).select("name");
+        if (comment.userId.toString() !== userId.toString()) {
+          await createNotification({
+            userId: comment.userId,
+            reportId,
+            sourceUserId: userId,
+            type: "comment_like",
+            commentId,
+            message: `${sourceUser?.name || "Someone"} liked your comment.`,
+          });
+        }
+      } catch (e) {
+        console.error("notify comment like error", e);
+      }
     } else {
       comment.likes = comment.likes.filter(
         (id) => id.toString() !== userId.toString(),
@@ -197,6 +289,57 @@ const likeComment = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false });
+  }
+};
+
+const addReply = async (req, res) => {
+  try {
+    const { reportId, commentId, text } = req.body;
+    const userId = req.user._id;
+
+    if (!reportId || !commentId || !text?.trim()) {
+      return res.status(400).json({ success: false, message: "Missing data" });
+    }
+
+    const report = await Report.findById(reportId);
+    if (!report) {
+      return res.status(404).json({ success: false, message: "Report not found" });
+    }
+
+    const comment = report.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({ success: false, message: "Comment not found" });
+    }
+
+    comment.replies.push({ userId, text: text.trim() });
+    await report.save();
+
+    // populate comment and reply users
+    await report.populate({ path: "comments.userId", select: "name -_id" });
+    await report.populate({ path: "comments.replies.userId", select: "name -_id" });
+    const updatedComment = report.comments.id(commentId);
+    const newReply = updatedComment.replies[updatedComment.replies.length - 1];
+
+    const sourceUser = await User.findById(userId).select("name");
+    try {
+      if (comment.userId.toString() !== userId.toString()) {
+        await createNotification({
+          userId: comment.userId,
+          reportId,
+          sourceUserId: userId,
+          type: "reply",
+          commentId,
+          message: `${sourceUser?.name || "Someone"} replied to your comment.`,
+        });
+      }
+    } catch (e) {
+      console.error("notify reply error", e);
+    }
+
+    return res.status(200).json({ success: true, reply: newReply, comment: updatedComment });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false });
   }
 };
 const upvoteReport = async (req, res) => {
@@ -232,6 +375,17 @@ const upvoteReport = async (req, res) => {
           $addToSet: { upvotes: reportId },
         }),
       ]);
+
+      const sourceUser = await User.findById(userId).select("name");
+      if (report.userId.toString() !== userId.toString()) {
+        await createNotification({
+          userId: report.userId,
+          reportId,
+          sourceUserId: userId,
+          type: "upvote",
+          message: `${sourceUser?.name || "Someone"} upvoted your report.`,
+        });
+      }
     }
 
     if (method === "pull") {
@@ -294,6 +448,17 @@ const downvoteReport = async (req, res) => {
           $addToSet: { downvotes: reportId },
         }),
       ]);
+
+      const sourceUser = await User.findById(userId).select("name");
+      if (report.userId.toString() !== userId.toString()) {
+        await createNotification({
+          userId: report.userId,
+          reportId,
+          sourceUserId: userId,
+          type: "downvote",
+          message: `${sourceUser?.name || "Someone"} downvoted your report.`,
+        });
+      }
     }
 
     if (method === "pull") {
@@ -333,7 +498,20 @@ const updateStatus = async (req, res) => {
         status,
         changer: userId,
       },
+      { new: true },
     );
+
+    const sourceUser = await User.findById(userId).select("name");
+    if (report && report.userId.toString() !== userId.toString()) {
+      await createNotification({
+        userId: report.userId,
+        reportId,
+        sourceUserId: userId,
+        type: "status",
+        message: `${sourceUser?.name || "Government"} updated report status to ${status}.`,
+      });
+    }
+
     return res.status(200).json({ success: true });
   } catch (err) {
     console.log(err);
@@ -346,9 +524,12 @@ module.exports = {
   getReport,
   getReportById,
   getAuthorityReports,
+  getAlerts,
+  searchReports,
   getComments,
   addComment,
   likeComment,
+  addReply,
   trackShare,
   upvoteReport,
   updateStatus,

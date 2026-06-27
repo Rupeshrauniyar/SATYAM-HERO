@@ -1,6 +1,7 @@
 import React, { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppContext } from "../contexts/AppContext";
+import { useTranslation } from "../utils/translations";
 import {
   LogOut,
   ChevronRight,
@@ -15,6 +16,7 @@ export default function Settings() {
   const { user, setUser, setIsAuthenticated } = useContext(AppContext);
   const navigate = useNavigate();
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const t = useTranslation();
 
   useEffect(() => {
     document.body.style.overflow = confirmLogout ? "hidden" : "auto";
@@ -36,7 +38,7 @@ export default function Settings() {
   return (
     <div>
       <div className="x-page-header">
-        <h1>Settings</h1>
+        <h1>{t("settings")}</h1>
       </div>
 
       <div className="p-4">
@@ -58,10 +60,10 @@ export default function Settings() {
         </div>
 
         <div className="border border-x-border rounded-2xl overflow-hidden divide-y divide-x-border">
-          <SettingsItem icon={<User size={18} />} label="Account" description="Personal information" />
-          <SettingsItem icon={<Shield size={18} />} label="Privacy & Security" description="Permissions" />
-          <SettingsItem icon={<Bell size={18} />} label="Notifications" description="Push and email alerts" />
-          <SettingsItem icon={<Palette size={18} />} label="Appearance" description="Theme and display" />
+          <SettingsItem icon={<User size={18} />} label={t("profile")} description="Personal information" />
+          <SettingsItem icon={<Shield size={18} />} label={t("privacyAndSecurity") || "Privacy & Security"} description="Permissions" />
+          <SettingsItem icon={<Bell size={18} />} label={t("notifications")} description="Push and email alerts" />
+          <SettingsItem icon={<Palette size={18} />} label={t("appearance") || "Appearance"} description="Theme and display" />
         </div>
 
         <button

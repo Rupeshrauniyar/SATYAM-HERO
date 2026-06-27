@@ -1,6 +1,7 @@
-import React, { useContext } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import React, { useContext, useState } from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { AppContext } from "../contexts/AppContext";
+import { useTranslation } from "../utils/translations";
 import {
   Home,
   LayoutDashboard,
@@ -9,14 +10,19 @@ import {
   Settings,
   Search,
   Feather,
+  Siren,
+  Bell,
+  Globe,
 } from "lucide-react";
 
 const PUBLIC_NAV = [
   { to: "/", icon: Home, label: "Home" },
-  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/alerts", icon: Siren, label: "Alerts" },
   { to: "/create", icon: PlusSquare, label: "Report" },
+  { to: "/search", icon: Search, label: "Search" },
   { to: "/profile", icon: User2, label: "Profile" },
-  { to: "/settings", icon: Settings, label: "Settings" },
+
+  // { to: "/settings", icon: Settings, label: "Settings" },
 ];
 
 const GOV_NAV = [
@@ -67,12 +73,39 @@ function MobileNavLink({ to, icon: Icon }) {
 }
 
 export default function AppShell({ children }) {
-  const { user } = useContext(AppContext);
+  const { user, language, toggleLanguage } = useContext(AppContext);
+  const [searchValue, setSearchValue] = useState("");
+  const navigate = useNavigate();
   const location = useLocation();
+  const t = useTranslation();
 
   const isGov = location.pathname.startsWith("/gov");
-  const navItems = isGov ? GOV_NAV : PUBLIC_NAV;
+  const navItems = isGov
+    ? [
+        { to: "/gov", icon: Home, label: t("home") },
+        { to: "/gov/dashboard", icon: LayoutDashboard, label: t("dashboard") },
+        { to: "/gov/create", icon: PlusSquare, label: t("create") },
+        { to: "/gov/search", icon: Search, label: t("search") },
+        { to: "/alerts", icon: Siren, label: t("alerts") },
+        { to: "/gov/profile", icon: User2, label: t("profile") },
+      ]
+    : [
+        { to: "/", icon: Home, label: t("home") },
+        { to: "/alerts", icon: Siren, label: t("alerts") },
+        { to: "/create", icon: PlusSquare, label: t("reportIssue") },
+        { to: "/search", icon: Search, label: t("search") },
+        { to: "/profile", icon: User2, label: t("profile") },
+      ];
   const createPath = isGov ? "/gov/dashboard" : "/create";
+  const searchPlaceholder = t("search");
+
+  const handleSearchSubmit = (event) => {
+    event.preventDefault();
+    const query = searchValue.trim();
+    if (!query) return;
+    navigate(`/search?q=${encodeURIComponent(query)}`);
+    setSearchValue("");
+  };
 
   return (
     <div className="min-h-screen bg-x-bg text-x-text">
@@ -93,7 +126,41 @@ export default function AppShell({ children }) {
             </span>
           </Link>
 
+          <form onSubmit={handleSearchSubmit} className="hidden sm:flex items-center gap-2 border border-x-border rounded-full px-3 py-1 bg-white">
+            <Search size={18} className="text-x-text-secondary" />
+            <input
+              value={searchValue}
+              onChange={(event) => setSearchValue(event.target.value)}
+              placeholder={searchPlaceholder}
+              className="bg-transparent outline-none text-sm min-w-[160px]"
+            />
+          </form>
+
           <div className="flex items-center gap-3">
+            <button
+              onClick={toggleLanguage}
+              type="button"
+              className="hidden sm:inline-flex items-center gap-2 rounded-full border border-x-border px-3 py-2 text-sm"
+            >
+              <Globe size={16} />
+              {language === "en" ? t("nepali") : t("english")}
+            </button>
+
+            <Link
+              to="/notifications"
+              className="relative inline-flex items-center justify-center p-2 rounded-full hover:bg-x-bg-hover transition-colors"
+            >
+              <Bell size={20} />
+              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
+            </Link>
+
+            <Link
+              to={isGov ? "/gov/settings" : "/settings"}
+              className="inline-flex items-center justify-center p-2 rounded-full hover:bg-x-bg-hover transition-colors"
+            >
+              <Settings size={20} />
+            </Link>
+
             {user ? (
               <Link
                 to={isGov ? "/gov/profile" : "/profile"}
@@ -173,7 +240,10 @@ export default function AppShell({ children }) {
               </h4>
               <div className="space-y-2">
                 {!isGov && (
-                  <Link to="/create" className="x-btn x-btn-accent x-btn-full x-btn-sm">
+                  <Link
+                    to="/create"
+                    className="x-btn x-btn-accent x-btn-full x-btn-sm"
+                  >
                     Report an Issue
                   </Link>
                 )}
@@ -188,7 +258,9 @@ export default function AppShell({ children }) {
             {user && (
               <div className="x-panel">
                 <div className="flex items-center gap-3">
-                  <div className="x-avatar">{user.name?.charAt(0)?.toUpperCase()}</div>
+                  <div className="x-avatar">
+                    {user.name?.charAt(0)?.toUpperCase()}
+                  </div>
                   <div className="min-w-0">
                     <p className="font-bold truncate">{user.name}</p>
                     <p className="text-x-text-secondary text-sm truncate">
