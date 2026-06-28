@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import axios from "axios";
+import { applyOptimisticVote } from "../utils/voteHelpers";
 import { CheckCircle, Loader2, XCircle } from "lucide-react";
 import { AppContext } from "../contexts/AppContext";
 import ReportFeedItem from "../components/ReportFeedItem";
@@ -137,6 +138,7 @@ export default function GovProfile() {
 
     const resourceId = id;
     const hasUpvoted = (user.upvotes || []).some((up) => up.toString() === resourceId.toString());
+    const hasDownvoted = (user.downvotes || []).some((down) => down.toString() === resourceId.toString());
     const previousUserState = {
       upvotes: user?.upvotes || [],
       downvotes: user?.downvotes || [],
@@ -159,26 +161,15 @@ export default function GovProfile() {
       };
     });
 
-    updatePostInState(resourceId, (post) => {
-      const currentUserId = user?._id;
-      const normalizedUserId = currentUserId?.toString();
-      const nextUpvotes = [...(post.upvotes || [])];
-      const nextDownvotes = [...(post.downvotes || [])];
-
-      if (hasUpvoted) {
-        return {
-          ...post,
-          upvotes: nextUpvotes.filter((item) => String(item) !== normalizedUserId),
-          downvotes: nextDownvotes.filter((item) => String(item) !== normalizedUserId),
-        };
-      }
-
-      return {
-        ...post,
-        upvotes: [...nextUpvotes.filter((item) => String(item) !== normalizedUserId), currentUserId],
-        downvotes: nextDownvotes.filter((item) => String(item) !== normalizedUserId),
-      };
-    });
+    updatePostInState(resourceId, (post) =>
+      applyOptimisticVote({
+        issue: post,
+        userId: user?._id,
+        voteType: "up",
+        hasCurrentVote: hasUpvoted,
+        hasOppositeVote: hasDownvoted,
+      }),
+    );
 
     try {
       const token = localStorage.getItem("token");
@@ -216,6 +207,7 @@ export default function GovProfile() {
 
     const resourceId = id;
     const hasDownvoted = (user.downvotes || []).some((down) => down.toString() === resourceId.toString());
+    const hasUpvoted = (user.upvotes || []).some((up) => up.toString() === resourceId.toString());
     const previousUserState = {
       upvotes: user?.upvotes || [],
       downvotes: user?.downvotes || [],
@@ -238,26 +230,15 @@ export default function GovProfile() {
       };
     });
 
-    updatePostInState(resourceId, (post) => {
-      const currentUserId = user?._id;
-      const normalizedUserId = currentUserId?.toString();
-      const nextUpvotes = [...(post.upvotes || [])];
-      const nextDownvotes = [...(post.downvotes || [])];
-
-      if (hasDownvoted) {
-        return {
-          ...post,
-          upvotes: nextUpvotes.filter((item) => String(item) !== normalizedUserId),
-          downvotes: nextDownvotes.filter((item) => String(item) !== normalizedUserId),
-        };
-      }
-
-      return {
-        ...post,
-        upvotes: nextUpvotes.filter((item) => String(item) !== normalizedUserId),
-        downvotes: [...nextDownvotes.filter((item) => String(item) !== normalizedUserId), currentUserId],
-      };
-    });
+    updatePostInState(resourceId, (post) =>
+      applyOptimisticVote({
+        issue: post,
+        userId: user?._id,
+        voteType: "down",
+        hasCurrentVote: hasDownvoted,
+        hasOppositeVote: hasUpvoted,
+      }),
+    );
 
     try {
       const token = localStorage.getItem("token");

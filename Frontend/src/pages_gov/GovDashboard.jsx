@@ -1,6 +1,7 @@
 import { Loader2, LayoutDashboard } from "lucide-react";
 import React, { useState, useEffect, useContext } from "react";
 import axios from "axios";
+import { applyOptimisticVote } from "../utils/voteHelpers";
 import { Link } from "react-router-dom";
 import "../styles.css";
 import ReportFeedItem from "../components/ReportFeedItem";
@@ -91,6 +92,7 @@ const GovDashboard = () => {
 
     const resourceId = issueId;
     const hasUpvoted = (user.upvotes || []).some((up) => up.toString() === resourceId.toString());
+    const hasDownvoted = (user.downvotes || []).some((down) => down.toString() === resourceId.toString());
     const previousUserState = {
       upvotes: user?.upvotes || [],
       downvotes: user?.downvotes || [],
@@ -113,26 +115,15 @@ const GovDashboard = () => {
       };
     });
 
-    updateIssueInState(resourceId, (issue) => {
-      const currentUserId = user?._id;
-      const normalizedUserId = currentUserId?.toString();
-      const nextUpvotes = [...(issue.upvotes || [])];
-      const nextDownvotes = [...(issue.downvotes || [])];
-
-      if (hasUpvoted) {
-        return {
-          ...issue,
-          upvotes: nextUpvotes.filter((item) => String(item) !== normalizedUserId),
-          downvotes: nextDownvotes.filter((item) => String(item) !== normalizedUserId),
-        };
-      }
-
-      return {
-        ...issue,
-        upvotes: [...nextUpvotes.filter((item) => String(item) !== normalizedUserId), currentUserId],
-        downvotes: nextDownvotes.filter((item) => String(item) !== normalizedUserId),
-      };
-    });
+    updateIssueInState(resourceId, (issue) =>
+      applyOptimisticVote({
+        issue,
+        userId: user?._id,
+        voteType: "up",
+        hasCurrentVote: hasUpvoted,
+        hasOppositeVote: hasDownvoted,
+      }),
+    );
 
     try {
       const tokenValue = localStorage.getItem("token");
@@ -174,6 +165,7 @@ const GovDashboard = () => {
 
     const resourceId = issueId;
     const hasDownvoted = (user.downvotes || []).some((down) => down.toString() === resourceId.toString());
+    const hasUpvoted = (user.upvotes || []).some((up) => up.toString() === resourceId.toString());
     const previousUserState = {
       upvotes: user?.upvotes || [],
       downvotes: user?.downvotes || [],
@@ -196,26 +188,15 @@ const GovDashboard = () => {
       };
     });
 
-    updateIssueInState(resourceId, (issue) => {
-      const currentUserId = user?._id;
-      const normalizedUserId = currentUserId?.toString();
-      const nextUpvotes = [...(issue.upvotes || [])];
-      const nextDownvotes = [...(issue.downvotes || [])];
-
-      if (hasDownvoted) {
-        return {
-          ...issue,
-          upvotes: nextUpvotes.filter((item) => String(item) !== normalizedUserId),
-          downvotes: nextDownvotes.filter((item) => String(item) !== normalizedUserId),
-        };
-      }
-
-      return {
-        ...issue,
-        upvotes: nextUpvotes.filter((item) => String(item) !== normalizedUserId),
-        downvotes: [...nextDownvotes.filter((item) => String(item) !== normalizedUserId), currentUserId],
-      };
-    });
+    updateIssueInState(resourceId, (issue) =>
+      applyOptimisticVote({
+        issue,
+        userId: user?._id,
+        voteType: "down",
+        hasCurrentVote: hasDownvoted,
+        hasOppositeVote: hasUpvoted,
+      }),
+    );
 
     try {
       const tokenValue = localStorage.getItem("token");

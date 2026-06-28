@@ -1,295 +1,179 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
-import { BarChart3, Clock3, Loader2, Search as SearchIcon } from "lucide-react";
+import { Loader2, X } from "lucide-react";
+import { useTranslation } from "../utils/translations";
 
 const statusOrder = ["Pending", "Progress", "Resolved"];
 
+const STATUS_STYLE = {
+  Pending:  { bar: "bg-amber-400",   text: "text-amber-500",   label: "pending"  },
+  Progress: { bar: "bg-sky-400",     text: "text-sky-500",     label: "progress" },
+  Resolved: { bar: "bg-emerald-400", text: "text-emerald-500", label: "resolved" },
+};
+
 const Insights = () => {
-  const [reports, setReports] = useState([]);
+  const t = useTranslation();
+  const [summary, setSummary] = useState({ total: 0, pending: 0, progress: 0, resolved: 0, last24Hours: 0 });
+  const [categories, setCategories] = useState([]);
+  const [wards, setWards] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({
-    status: "all",
-    ward: "all",
-    category: "all",
-    search: "",
-  });
+  const [filters, setFilters] = useState({ status: "all", ward: "all", category: "all" });
 
   useEffect(() => {
-    const fetchReports = async () => {
+    const fetchInsights = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/report/get`, {
-          params: { page: 1, limit: 100 },
+        const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/report/insights`, {
+          params: {
+            status:   filters.status   !== "all" ? filters.status   : undefined,
+            ward:     filters.ward     !== "all" ? filters.ward     : undefined,
+            category: filters.category !== "all" ? filters.category : undefined,
+          },
         });
-
         if (response.data?.success) {
-          setReports(response.data.Reports || []);
+          setSummary(response.data.summary || {});
+          setCategories(response.data.filters?.categories || []);
+          setWards(response.data.filters?.wards || []);
         }
-      } catch (error) {
-        console.error("Failed to load insights data", error);
+      } catch (err) {
+        console.error("Failed to load insights data", err);
       } finally {
         setLoading(false);
       }
     };
-
-    fetchReports();
-  }, []);
-
-  const summary = useMemo(() => {
-    const statusCounts = statusOrder.reduce((acc, status) => {
-      acc[status] = reports.filter((report) => report.status === status).length;
-      return acc;
-    }, {});
-
-    const last24Hours = reports.filter((report) => {
-      const createdAt = new Date(report.createdAt).getTime();
-      return Date.now() - createdAt <= 24 * 60 * 60 * 1000;
-    }).length;
-
-    return {
-      total: reports.length,
-      pending: statusCounts.Pending || 0,
-      progress: statusCounts.Progress || 0,
-      resolved: statusCounts.Resolved || 0,
-      last24Hours,
-    };
-  }, [reports]);
-
-  const categories = useMemo(() => {
-    return [...new Set(reports.map((report) => report.category).filter(Boolean))].sort();
-  }, [reports]);
-
-  const wards = useMemo(() => {
-    return [...new Set(reports.map((report) => String(report.ward_number)).filter(Boolean))].sort(
-      (a, b) => Number(a) - Number(b),
-    );
-  }, [reports]);
-
-  const filteredReports = useMemo(() => {
-    const search = filters.search.trim().toLowerCase();
-
-    return reports.filter((report) => {
-      const matchesStatus = filters.status === "all" || report.status === filters.status;
-      const matchesWard = filters.ward === "all" || String(report.ward_number) === filters.ward;
-      const matchesCategory = filters.category === "all" || report.category === filters.category;
-      const matchesSearch =
-        !search ||
-        [report.title, report.description, report.category, String(report.ward_number)]
-          .join(" ")
-          .toLowerCase()
-          .includes(search);
-
-      return matchesStatus && matchesWard && matchesCategory && matchesSearch;
-    });
-  }, [filters, reports]);
-
-  const filteredInsights = useMemo(() => {
-    const statusCounts = statusOrder.reduce((acc, status) => {
-      acc[status] = filteredReports.filter((report) => report.status === status).length;
-      return acc;
-    }, {});
-
-    const last24Hours = filteredReports.filter((report) => {
-      const createdAt = new Date(report.createdAt).getTime();
-      return Date.now() - createdAt <= 24 * 60 * 60 * 1000;
-    }).length;
-
-    return {
-      total: filteredReports.length,
-      pending: statusCounts.Pending || 0,
-      progress: statusCounts.Progress || 0,
-      resolved: statusCounts.Resolved || 0,
-      last24Hours,
-    };
-  }, [filteredReports]);
-
-  const hasActiveFilters = useMemo(() => {
-    return Object.values(filters).some((value) => value !== "all" && value !== "");
+    fetchInsights();
   }, [filters]);
 
-  const activeFilterSummary = useMemo(() => {
-    const parts = [];
-    if (filters.status !== "all") parts.push(filters.status);
-    if (filters.ward !== "all") parts.push(`Ward ${filters.ward}`);
-    if (filters.category !== "all") parts.push(filters.category);
-    if (filters.search.trim()) parts.push(`“${filters.search.trim()}”`);
-    return parts.length ? parts.join(" • ") : "All reports";
-  }, [filters]);
+  const hasFilters = useMemo(
+    () => Object.values(filters).some((v) => v !== "all"),
+    [filters],
+  );
 
-  const handleFilterChange = (field, value) => {
-    setFilters((prev) => ({ ...prev, [field]: value }));
-  };
+  const clearFilters = () => setFilters({ status: "all", ward: "all", category: "all" });
+  const handleFilterChange = (field, value) => setFilters((prev) => ({ ...prev, [field]: value }));
+
+  const pct = summary.total
+    ? {
+        Pending:  (summary.pending  / summary.total) * 100,
+        Progress: (summary.progress / summary.total) * 100,
+        Resolved: (summary.resolved / summary.total) * 100,
+      }
+    : { Pending: 33, Progress: 33, Resolved: 34 };
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center py-20">
-        <div className="text-center">
-          <Loader2 className="mx-auto mb-3 animate-spin text-x-accent" size={28} />
-          <p className="text-sm text-x-text-secondary">Loading civic insights…</p>
-        </div>
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Loader2 className="animate-spin text-x-accent" size={24} />
       </div>
     );
   }
 
+  const statKeys = [
+    { key: "total",    value: summary.total,      colorClass: "text-x-text",      labelKey: "total"    },
+    { key: "pending",  value: summary.pending,    colorClass: "text-amber-500",   labelKey: "pending"  },
+    { key: "progress", value: summary.progress,   colorClass: "text-sky-500",     labelKey: "progress" },
+    { key: "resolved", value: summary.resolved,   colorClass: "text-emerald-500", labelKey: "resolved" },
+  ];
+
   return (
-    <div className="p-4 md:p-6 space-y-4">
-      <div className="x-page-header">
+    <div className="px-4 py-5 md:px-6 space-y-4 text-x-text">
+
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm text-x-text-secondary">Community overview</p>
-          <h1>Insights</h1>
+          <p className="text-[11px] uppercase tracking-widest text-x-text-secondary">{t("community")}</p>
+          <h1 className="text-xl font-semibold leading-tight">{t("insights")}</h1>
         </div>
-        <Link to="/create" className="x-btn x-btn-primary x-btn-sm">
-          Report an issue
+        <Link
+          to="/create"
+          className="rounded-xl bg-x-accent px-3 py-1.5 text-xs font-semibold text-x-text-on-accent transition hover:opacity-90"
+        >
+          + {t("reportIssue")}
         </Link>
       </div>
+    <div className="rounded-2xl border border-x-border bg-x-bg-secondary px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Status */}
+      
 
-      <div className="grid grid-cols-2 xl:grid-cols-5 gap-3">
-        <div className="x-panel p-4">
-          <p className="text-xs uppercase tracking-wider text-x-text-secondary">Total reports</p>
-          <p className="mt-2 text-2xl font-bold">{summary.total}</p>
+          {/* Ward */}
+          <select
+            value={filters.ward}
+            onChange={(e) => handleFilterChange("ward", e.target.value)}
+            className="rounded-xl border border-x-border bg-x-bg px-3 py-1.5 text-xs text-x-text outline-none focus:border-x-accent"
+          >
+            <option value="all">{t("allWards")}</option>
+            {wards.map((w) => (
+              <option key={w} value={w}>{t("ward")} {w}</option>
+            ))}
+          </select>
+
+          {/* Category */}
+          <select
+            value={filters.category}
+            onChange={(e) => handleFilterChange("category", e.target.value)}
+            className="rounded-xl border border-x-border bg-x-bg px-3 py-1.5 text-xs text-x-text outline-none focus:border-x-accent"
+          >
+            <option value="all">{t("allTypes")}</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+
+          {hasFilters && (
+            <button
+              onClick={clearFilters}
+              className="ml-auto flex items-center gap-1 rounded-xl border border-x-border bg-x-bg px-2.5 py-1.5 text-xs text-x-text-secondary hover:text-x-text transition-colors"
+            >
+              <X size={11} /> {t("clearFilters")}
+            </button>
+          )}
         </div>
-        <div className="x-panel p-4">
-          <p className="text-xs uppercase tracking-wider text-x-text-secondary">Filed in 24 hrs</p>
-          <p className="mt-2 flex items-center gap-2 text-2xl font-bold text-violet-500">
-            <Clock3 size={18} /> {summary.last24Hours}
-          </p>
+      </div>
+      {/* ── Stat row ── */}
+      <div className="grid grid-cols-4 gap-2">
+        {statKeys.map(({ key, value, colorClass, labelKey }) => (
+          <div
+            key={key}
+            className="rounded-2xl border border-x-border bg-x-bg-secondary px-3 py-8 text-center"
+          >
+            <p className={`text-xl font-bold tabular-nums leading-none ${colorClass}`}>{value}</p>
+            <p className="mt-1 text-[10px] uppercase tracking-wider text-x-text-secondary">{t(labelKey)}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Resolution bar ── */}
+      <div className="rounded-2xl border border-x-border bg-x-bg-secondary px-4 py-6 space-y-2">
+        <div className="flex gap-0.5 h-1.5 w-full overflow-hidden rounded-full">
+          {statusOrder.map((s) => (
+            <div
+              key={s}
+              className={`${STATUS_STYLE[s].bar} transition-all duration-700`}
+              style={{ width: `${pct[s]}%` }}
+            />
+          ))}
         </div>
-        <div className="x-panel p-4">
-          <p className="text-xs uppercase tracking-wider text-x-text-secondary">Pending</p>
-          <p className="mt-2 text-2xl font-bold text-amber-500">{summary.pending}</p>
-        </div>
-        <div className="x-panel p-4">
-          <p className="text-xs uppercase tracking-wider text-x-text-secondary">In progress</p>
-          <p className="mt-2 text-2xl font-bold text-sky-500">{summary.progress}</p>
-        </div>
-        <div className="x-panel p-4">
-          <p className="text-xs uppercase tracking-wider text-x-text-secondary">Resolved</p>
-          <p className="mt-2 text-2xl font-bold text-emerald-500">{summary.resolved}</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {statusOrder.map((s) => (
+              <span key={s} className={`flex items-center gap-1 text-[11px] font-medium ${STATUS_STYLE[s].text}`}>
+                <span className={`inline-block h-1.5 w-1.5 rounded-full ${STATUS_STYLE[s].bar}`} />
+                {t(STATUS_STYLE[s].label)}
+              </span>
+            ))}
+          </div>
+          {summary.last24Hours > 0 && (
+            <span className="text-[11px] text-x-text-secondary">
+              +{summary.last24Hours} {t("today")}
+            </span>
+          )}
         </div>
       </div>
 
-      <div className="x-panel p-4">
-        <div className="flex items-center gap-2 mb-4">
-          <BarChart3 size={18} className="text-x-accent" />
-          <h2 className="font-bold text-lg">Filter reports</h2>
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <label className="text-sm text-x-text-secondary">
-            <span className="mb-1 block">Status</span>
-            <select
-              value={filters.status}
-              onChange={(event) => handleFilterChange("status", event.target.value)}
-              className="w-full rounded-xl border border-x-border bg-x-bg-secondary px-3 py-2 text-sm outline-none"
-            >
-              <option value="all">All statuses</option>
-              {statusOrder.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="text-sm text-x-text-secondary">
-            <span className="mb-1 block">Ward</span>
-            <select
-              value={filters.ward}
-              onChange={(event) => handleFilterChange("ward", event.target.value)}
-              className="w-full rounded-xl border border-x-border bg-x-bg-secondary px-3 py-2 text-sm outline-none"
-            >
-              <option value="all">All wards</option>
-              {wards.map((ward) => (
-                <option key={ward} value={ward}>
-                  Ward {ward}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="text-sm text-x-text-secondary">
-            <span className="mb-1 block">Issue type</span>
-            <select
-              value={filters.category}
-              onChange={(event) => handleFilterChange("category", event.target.value)}
-              className="w-full rounded-xl border border-x-border bg-x-bg-secondary px-3 py-2 text-sm outline-none"
-            >
-              <option value="all">All types</option>
-              {categories.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="text-sm text-x-text-secondary">
-            <span className="mb-1 block">Search</span>
-            <div className="relative">
-              <SearchIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-x-text-secondary" />
-              <input
-                value={filters.search}
-                onChange={(event) => handleFilterChange("search", event.target.value)}
-                placeholder="Search title or keyword"
-                className="w-full rounded-xl border border-x-border bg-x-bg-secondary pl-9 pr-3 py-2 text-sm outline-none"
-              />
-            </div>
-          </label>
-        </div>
-      </div>
-
-      <div className="x-panel p-4">
-        <div className="mb-4 flex items-center justify-between gap-2">
-          <div>
-            <h2 className="font-bold text-lg">Filtered insights</h2>
-            <p className="text-sm text-x-text-secondary">
-              {hasActiveFilters
-                ? `Showing ${filteredReports.length} report${filteredReports.length === 1 ? "" : "s"} for ${activeFilterSummary}.`
-                : "Showing the full community overview. Use filters to focus the view."}
-            </p>
-          </div>
-          <span className="text-sm text-x-text-secondary">{filteredReports.length} matching</span>
-        </div>
-
-        {filteredReports.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-x-border bg-x-bg-secondary px-4 py-8 text-center text-sm text-x-text-secondary">
-            No reports match the current filters yet.
-          </div>
-        ) : (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-x-border bg-x-bg-secondary p-4">
-              <p className="text-xs uppercase tracking-wider text-x-text-secondary">Filtered total</p>
-              <p className="mt-2 text-2xl font-bold">{filteredInsights.total}</p>
-            </div>
-            <div className="rounded-2xl border border-x-border bg-x-bg-secondary p-4">
-              <p className="text-xs uppercase tracking-wider text-x-text-secondary">Filed in 24 hrs</p>
-              <p className="mt-2 text-2xl font-bold text-violet-500">{filteredInsights.last24Hours}</p>
-            </div>
-            <div className="rounded-2xl border border-x-border bg-x-bg-secondary p-4">
-              <p className="text-xs uppercase tracking-wider text-x-text-secondary">Pending</p>
-              <p className="mt-2 text-2xl font-bold text-amber-500">{filteredInsights.pending}</p>
-            </div>
-            <div className="rounded-2xl border border-x-border bg-x-bg-secondary p-4">
-              <p className="text-xs uppercase tracking-wider text-x-text-secondary">In progress</p>
-              <p className="mt-2 text-2xl font-bold text-sky-500">{filteredInsights.progress}</p>
-            </div>
-            <div className="rounded-2xl border border-x-border bg-x-bg-secondary p-4 md:col-span-2 xl:col-span-4">
-              <p className="text-xs uppercase tracking-wider text-x-text-secondary">Current focus</p>
-              <p className="mt-2 text-lg font-bold">{hasActiveFilters ? activeFilterSummary : "All reports across the community"}</p>
-              <p className="mt-1 text-sm text-x-text-secondary">
-                {hasActiveFilters
-                  ? "These counts reflect only the reports that match your current selection."
-                  : "Select a ward, category, status, or keyword to narrow the view to what matters most."}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-x-border bg-x-bg-secondary p-4 md:col-span-2 xl:col-span-4">
-              <p className="text-xs uppercase tracking-wider text-x-text-secondary">Resolved</p>
-              <p className="mt-2 text-2xl font-bold text-emerald-500">{filteredInsights.resolved}</p>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* ── Filters ── */}
+  
     </div>
   );
 };

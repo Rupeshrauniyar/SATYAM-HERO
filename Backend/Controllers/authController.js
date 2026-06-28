@@ -1,6 +1,9 @@
 const jwt = require("jsonwebtoken");
 const User = require("../Models/UserModel.js");
 require("dotenv").config();
+
+const JWT_SECRET = process.env.JWT || "civicreport-secret";
+
 const checkAuth = async (req, res) => {
   try {
     const { token } = req.body;
@@ -11,7 +14,7 @@ const checkAuth = async (req, res) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT);
+    const decoded = jwt.verify(token, JWT_SECRET);
 
     const user = await User.findById(decoded._id);
 

@@ -4,6 +4,7 @@ import axios from "axios";
 import { AppContext } from "../contexts/AppContext";
 import { Loader2, MessageCircle, Search as SearchIcon } from "lucide-react";
 import ReportFeedItem from "../components/ReportFeedItem";
+import { applyOptimisticVote } from "../utils/voteHelpers";
 import { useTranslation } from "../utils/translations";
 
 const Search = ({ basePath = "/search", heading = null, intro = null, action = null }) => {
@@ -52,15 +53,31 @@ const Search = ({ basePath = "/search", heading = null, intro = null, action = n
 
   const handleUpvote = async (e) => {
     if (!user) return;
+
+    const resourceId = e;
+    const hasUpvoted = (user.upvotes || []).some((up) => up.toString() === resourceId.toString());
+    const hasDownvoted = (user.downvotes || []).some((down) => down.toString() === resourceId.toString());
+    const previousResults = results;
+
+    setResults((prev) =>
+      prev.map((report) =>
+        report._id === resourceId
+          ? applyOptimisticVote({
+              issue: report,
+              userId: user._id,
+              voteType: "up",
+              hasCurrentVote: hasUpvoted,
+              hasOppositeVote: hasDownvoted,
+            })
+          : report
+      )
+    );
+
     try {
       const token = localStorage.getItem("token");
-      const hasUpvoted = (user.upvotes || []).some(
-        (up) => up.toString() === e.toString()
-      );
-
       const res = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/report/upvote`,
-        { reportId: e, token, method: hasUpvoted ? "pull" : "push" }
+        { reportId: resourceId, token, method: hasUpvoted ? "pull" : "push" }
       );
 
       if (res.status === 200 && res.data.success) {
@@ -68,34 +85,17 @@ const Search = ({ basePath = "/search", heading = null, intro = null, action = n
         if (nextResource) {
           setResults((prev) =>
             prev.map((report) =>
-              report._id === e
+              report._id === resourceId
                 ? {
                     ...report,
                     upvotes: nextResource.upvotes || [],
                     downvotes: nextResource.downvotes || [],
-                  }
-                : report
-            )
-          );
-        } else if (!hasUpvoted) {
-          setResults((prev) =>
-            prev.map((report) =>
-              report._id === e
-                ? {
-                    ...report,
-                    upvotes: [...(report.upvotes || []), user._id],
-                    downvotes: (report.downvotes || []).filter((d) => d !== user._id),
-                  }
-                : report
-            )
-          );
-        } else {
-          setResults((prev) =>
-            prev.map((report) =>
-              report._id === e
-                ? {
-                    ...report,
-                    upvotes: (report.upvotes || []).filter((id) => id !== user._id),
+                    upvotesCount: Array.isArray(nextResource.upvotes)
+                      ? nextResource.upvotes.length
+                      : nextResource.upvotesCount ?? report.upvotesCount,
+                    downvotesCount: Array.isArray(nextResource.downvotes)
+                      ? nextResource.downvotes.length
+                      : nextResource.downvotesCount ?? report.downvotesCount,
                   }
                 : report
             )
@@ -103,21 +103,38 @@ const Search = ({ basePath = "/search", heading = null, intro = null, action = n
         }
       }
     } catch (err) {
+      setResults(previousResults);
       console.log(err);
     }
   };
 
   const handleDownvote = async (e) => {
     if (!user) return;
+
+    const resourceId = e;
+    const hasDownvoted = (user.downvotes || []).some((down) => down.toString() === resourceId.toString());
+    const hasUpvoted = (user.upvotes || []).some((up) => up.toString() === resourceId.toString());
+    const previousResults = results;
+
+    setResults((prev) =>
+      prev.map((report) =>
+        report._id === resourceId
+          ? applyOptimisticVote({
+              issue: report,
+              userId: user._id,
+              voteType: "down",
+              hasCurrentVote: hasDownvoted,
+              hasOppositeVote: hasUpvoted,
+            })
+          : report
+      )
+    );
+
     try {
       const token = localStorage.getItem("token");
-      const hasDownvoted = (user.downvotes || []).some(
-        (down) => down.toString() === e.toString()
-      );
-
       const res = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/report/downvote`,
-        { reportId: e, token, method: hasDownvoted ? "pull" : "push" }
+        { reportId: resourceId, token, method: hasDownvoted ? "pull" : "push" }
       );
 
       if (res.status === 200 && res.data.success) {
@@ -125,34 +142,17 @@ const Search = ({ basePath = "/search", heading = null, intro = null, action = n
         if (nextResource) {
           setResults((prev) =>
             prev.map((report) =>
-              report._id === e
+              report._id === resourceId
                 ? {
                     ...report,
                     upvotes: nextResource.upvotes || [],
                     downvotes: nextResource.downvotes || [],
-                  }
-                : report
-            )
-          );
-        } else if (!hasDownvoted) {
-          setResults((prev) =>
-            prev.map((report) =>
-              report._id === e
-                ? {
-                    ...report,
-                    downvotes: [...(report.downvotes || []), user._id],
-                    upvotes: (report.upvotes || []).filter((u) => u !== user._id),
-                  }
-                : report
-            )
-          );
-        } else {
-          setResults((prev) =>
-            prev.map((report) =>
-              report._id === e
-                ? {
-                    ...report,
-                    downvotes: (report.downvotes || []).filter((id) => id !== user._id),
+                    upvotesCount: Array.isArray(nextResource.upvotes)
+                      ? nextResource.upvotes.length
+                      : nextResource.upvotesCount ?? report.upvotesCount,
+                    downvotesCount: Array.isArray(nextResource.downvotes)
+                      ? nextResource.downvotes.length
+                      : nextResource.downvotesCount ?? report.downvotesCount,
                   }
                 : report
             )
@@ -160,6 +160,7 @@ const Search = ({ basePath = "/search", heading = null, intro = null, action = n
         }
       }
     } catch (err) {
+      setResults(previousResults);
       console.log(err);
     }
   };

@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { X, TrendingUp, ThumbsUp, ThumbsDown, MessageCircle, Share2 } from "lucide-react";
+import { useTranslation } from "../utils/translations";
 
 export default function InsightsSheet({ report, open, onClose }) {
+  const t = useTranslation();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -28,10 +30,10 @@ export default function InsightsSheet({ report, open, onClose }) {
   const approval = Math.round((upvotes / total) * 100);
 
   const stats = [
-    { icon: ThumbsUp, label: "Upvotes", value: upvotes, color: "text-x-accent" },
-    { icon: ThumbsDown, label: "Downvotes", value: downvotes, color: "text-red-500" },
-    { icon: MessageCircle, label: "Comments", value: comments, color: "text-x-text" },
-    { icon: Share2, label: "Shares", value: shares, color: "text-x-text" },
+    { icon: ThumbsUp, label: t("upvotesLabel"), value: upvotes, color: "text-x-accent" },
+    { icon: ThumbsDown, label: t("downvotesLabel"), value: downvotes, color: "text-red-500" },
+    { icon: MessageCircle, label: t("comments"), value: comments, color: "text-x-text" },
+    { icon: Share2, label: t("shares"), value: shares, color: "text-x-text" },
   ];
 
   return (
@@ -53,9 +55,9 @@ export default function InsightsSheet({ report, open, onClose }) {
 
         <div className="x-sheet-body">
           <div className="mb-4">
-            <p className="text-sm font-semibold">{report?.title || "Issue activity"}</p>
+            <p className="text-sm font-semibold">{report?.title || t("issueActivity")}</p>
             <p className="text-sm text-x-text-secondary mt-1">
-              {report?.ward_number ? `Ward ${report?.ward_number}` : "Community issue"} · {report?.category || "General"}
+              {report?.ward_number ? `${t("ward")} ${report?.ward_number}` : t("communityIssue")} · {report?.category || t("general")}
             </p>
           </div>
 
@@ -72,11 +74,11 @@ export default function InsightsSheet({ report, open, onClose }) {
           </div>
 
           <div className="x-panel">
-            <p className="text-sm font-semibold mb-2">Approval</p>
+            <p className="text-sm font-semibold mb-2">{t("approval")}</p>
             <div className="h-2 rounded-full bg-x-border overflow-hidden">
               <div className="h-full rounded-full bg-x-accent" style={{ width: `${approval}%` }} />
             </div>
-            <p className="text-xs text-x-text-secondary mt-2">{approval}% positive based on votes</p>
+            <p className="text-xs text-x-text-secondary mt-2">{approval}% {t("positiveBasedOnVotes")}</p>
           </div>
         </div>
       </div>

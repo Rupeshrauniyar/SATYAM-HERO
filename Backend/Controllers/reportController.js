@@ -4,6 +4,9 @@ const GovPost = require("../Models/GovPostModel");
 const User = require("../Models/UserModel");
 const Notification = require("../Models/NotificationModel");
 const { normalizeResourceType, isResourceOwner } = require("../Utils/voteHelpers");
+const { extractToken } = require("../Utils/authUtils");
+
+const jwt = require("jsonwebtoken");
 
 const reportPopulate = [
   { path: "userId changer", select: "name role" },
@@ -141,17 +144,48 @@ const getReport = async (req, res) => {
 
 const getInsights = async (req, res) => {
   try {
-    // overall counts and status breakdown
+    const { status, ward, category, search } = req.query;
+    const query = {};
+
+    if (status && status !== "all") {
+      query.status = status;
+    }
+
+    if (ward && ward !== "all") {
+      const parsedWard = Number(ward);
+      query.ward_number = Number.isNaN(parsedWard) ? ward : parsedWard;
+    }
+
+    if (category && category !== "all") {
+      query.category = category;
+    }
+
+    if (search && search.trim()) {
+      const regex = new RegExp(search.trim(), "i");
+      query.$or = [
+        { title: regex },
+        { description: regex },
+        { category: regex },
+      ];
+    }
+
     const now = new Date();
     const last24 = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-    const total = await Report.countDocuments();
-    const pending = await Report.countDocuments({ status: "Pending" });
-    const progress = await Report.countDocuments({ status: "Progress" });
-    const resolved = await Report.countDocuments({ status: "Resolved" });
-    const last24Hours = await Report.countDocuments({ createdAt: { $gte: last24 } });
+    const total = await Report.countDocuments(query);
+    const pending = await Report.countDocuments({ ...query, status: "Pending" });
+    const progress = await Report.countDocuments({ ...query, status: "Progress" });
+    const resolved = await Report.countDocuments({ ...query, status: "Resolved" });
+    const last24Hours = await Report.countDocuments({ ...query, createdAt: { $gte: last24 } });
 
-    return res.status(200).json({ success: true, summary: { total, pending, progress, resolved, last24Hours } });
+    const categories = (await Report.distinct("category")).filter(Boolean).sort();
+    const wards = (await Report.distinct("ward_number")).filter((w) => w != null).map((w) => String(w)).sort((a, b) => Number(a) - Number(b));
+
+    return res.status(200).json({
+      success: true,
+      summary: { total, pending, progress, resolved, last24Hours },
+      filters: { categories, wards },
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false });
@@ -557,7 +591,21 @@ const addReply = async (req, res) => {
 const upvoteReport = async (req, res) => {
   try {
     const { reportId, method, resourceType = "report" } = req.body;
-    const userId = req.user._id;
+    const explicitToken = extractToken(req);
+    const resolvedUserId = req.user?._id || req.userId;
+
+    if (!resolvedUserId && explicitToken) {
+      try {
+        const decoded = jwt.verify(explicitToken, process.env.JWT || "civicreport-secret");
+        if (decoded?._id) {
+          req.user = { _id: decoded._id };
+        }
+      } catch (tokenError) {
+        console.error("Upvote token decode failed", tokenError.message);
+      }
+    }
+
+    const currentUserId = req.user?._id || req.userId;
     const normalizedType = normalizeResourceType(resourceType);
 
     if (!reportId || !method) {
@@ -568,15 +616,19 @@ const upvoteReport = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid method" });
     }
 
+    if (!currentUserId) {
+      return res.status(401).json({ success: false, message: "Authentication required" });
+    }
+
     const Model = getResourceModel(normalizedType);
     const resource = await Model.findById(reportId);
-    const user = await User.findById(userId);
+    const user = await User.findById(currentUserId);
 
     if (!resource || !user) {
       return res.status(404).json({ success: false, message: "Not found" });
     }
 
-    if (isResourceOwner(resource, userId)) {
+    if (isResourceOwner(resource, currentUserId)) {
       return res.status(403).json({ success: false, message: "You cannot vote on your own post." });
     }
 
@@ -588,13 +640,13 @@ const upvoteReport = async (req, res) => {
         Model.findByIdAndUpdate(
           reportId,
           {
-            $pull: { downvotes: userId },
-            $addToSet: { upvotes: userId },
+            $pull: { downvotes: currentUserId },
+            $addToSet: { upvotes: currentUserId },
           },
           { new: true },
         ),
         User.findByIdAndUpdate(
-          userId,
+          currentUserId,
           {
             $pull: { downvotes: reportId },
             $addToSet: { upvotes: reportId },
@@ -603,13 +655,13 @@ const upvoteReport = async (req, res) => {
         ),
       ]);
 
-      const sourceUser = await User.findById(userId).select("name");
+      const sourceUser = await User.findById(currentUserId).select("name");
       const ownerId = getOwnerId(resource);
-      if (ownerId && ownerId.toString() !== userId.toString()) {
+      if (ownerId && ownerId.toString() !== currentUserId.toString()) {
         await createNotification({
           userId: ownerId,
           reportId,
-          sourceUserId: userId,
+          sourceUserId: currentUserId,
           type: "upvote",
           message: `${sourceUser?.name || "Someone"} upvoted your report.`,
         });
@@ -621,12 +673,12 @@ const upvoteReport = async (req, res) => {
         Model.findByIdAndUpdate(
           reportId,
           {
-            $pull: { upvotes: userId },
+            $pull: { upvotes: currentUserId },
           },
           { new: true },
         ),
         User.findByIdAndUpdate(
-          userId,
+          currentUserId,
           {
             $pull: { upvotes: reportId },
           },
@@ -677,7 +729,21 @@ const getMyReport = async (req, res) => {
 const downvoteReport = async (req, res) => {
   try {
     const { reportId, method, resourceType = "report" } = req.body;
-    const userId = req.user._id;
+    const explicitToken = extractToken(req);
+    const resolvedUserId = req.user?._id || req.userId;
+
+    if (!resolvedUserId && explicitToken) {
+      try {
+        const decoded = jwt.verify(explicitToken, process.env.JWT || "civicreport-secret");
+        if (decoded?._id) {
+          req.user = { _id: decoded._id };
+        }
+      } catch (tokenError) {
+        console.error("Downvote token decode failed", tokenError.message);
+      }
+    }
+
+    const currentUserId = req.user?._id || req.userId;
     const normalizedType = normalizeResourceType(resourceType);
 
     if (!reportId || !method) {
@@ -688,15 +754,19 @@ const downvoteReport = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid method" });
     }
 
+    if (!currentUserId) {
+      return res.status(401).json({ success: false, message: "Authentication required" });
+    }
+
     const Model = getResourceModel(normalizedType);
     const resource = await Model.findById(reportId);
-    const user = await User.findById(userId);
+    const user = await User.findById(currentUserId);
 
     if (!resource || !user) {
       return res.status(404).json({ success: false, message: "Not found" });
     }
 
-    if (isResourceOwner(resource, userId)) {
+    if (isResourceOwner(resource, currentUserId)) {
       return res.status(403).json({ success: false, message: "You cannot vote on your own post." });
     }
 
@@ -708,13 +778,13 @@ const downvoteReport = async (req, res) => {
         Model.findByIdAndUpdate(
           reportId,
           {
-            $pull: { upvotes: userId },
-            $addToSet: { downvotes: userId },
+            $pull: { upvotes: currentUserId },
+            $addToSet: { downvotes: currentUserId },
           },
           { new: true },
         ),
         User.findByIdAndUpdate(
-          userId,
+          currentUserId,
           {
             $pull: { upvotes: reportId },
             $addToSet: { downvotes: reportId },
@@ -723,13 +793,13 @@ const downvoteReport = async (req, res) => {
         ),
       ]);
 
-      const sourceUser = await User.findById(userId).select("name");
+      const sourceUser = await User.findById(currentUserId).select("name");
       const ownerId = getOwnerId(resource);
-      if (ownerId && ownerId.toString() !== userId.toString()) {
+      if (ownerId && ownerId.toString() !== currentUserId.toString()) {
         await createNotification({
           userId: ownerId,
           reportId,
-          sourceUserId: userId,
+          sourceUserId: currentUserId,
           type: "downvote",
           message: `${sourceUser?.name || "Someone"} downvoted your report.`,
         });
@@ -741,12 +811,12 @@ const downvoteReport = async (req, res) => {
         Model.findByIdAndUpdate(
           reportId,
           {
-            $pull: { downvotes: userId },
+            $pull: { downvotes: currentUserId },
           },
           { new: true },
         ),
         User.findByIdAndUpdate(
-          userId,
+          currentUserId,
           {
             $pull: { downvotes: reportId },
           },
