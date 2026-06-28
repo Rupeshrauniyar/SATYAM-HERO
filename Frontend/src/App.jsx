@@ -12,12 +12,15 @@ import GovMiddleware from "./middlewares/GovMiddleware";
 import UnverifiedMiddleware from "./middlewares/UnverifiedMiddleware";
 
 // user pages
+import Landing from "./pages/Landing";
+
 import Home from "./pages/Home";
 import Create from "./pages/Create";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import Search from "./pages/Search";
+import Insights from "./pages/Insights";
 
 // gov pages
 import GovHome from "./pages_gov/GovHome";
@@ -50,6 +53,8 @@ const App = () => {
               <Route path="/search" element={<Search />} />
               <Route path="/alerts" element={<Alerts />} />
               <Route path="/notifications" element={<Notifications />} />
+              <Route path="/insights" element={<Insights />} />
+
             </Route>
           </Route>
 
@@ -70,6 +75,7 @@ const App = () => {
 
           {/* PUBLIC */}
           <Route element={<PublicLayout />}>
+              <Route path="/landing" element={<Landing />} />
             <Route path="/signin" element={<Signinv2 />} />
             <Route element={<UnverifiedMiddleware />}>
               <Route path="/signup" element={<Signup />} />

@@ -13,6 +13,7 @@ import {
   Siren,
   Bell,
   Globe,
+  BarChart3,
 } from "lucide-react";
 
 const PUBLIC_NAV = [
@@ -91,9 +92,12 @@ export default function AppShell({ children }) {
       ]
     : [
         { to: "/", icon: Home, label: t("home") },
-        { to: "/alerts", icon: Siren, label: t("alerts") },
+        { to: "/insights", icon: BarChart3, label: "Insights" },
+
         { to: "/create", icon: PlusSquare, label: t("reportIssue") },
-        { to: "/search", icon: Search, label: t("search") },
+        // { to: "/search", icon: Search, label: t("search") },
+        { to: "/alerts", icon: Siren, label: t("alerts") },
+
         { to: "/profile", icon: User2, label: t("profile") },
       ];
   const createPath = isGov ? "/gov/dashboard" : "/create";
@@ -151,6 +155,14 @@ style={{ height: "var(--topbar-h)", background: "var(--color-x-bg)" }}
               <Globe size={16} />
               {language === "en" ? t("nepali") : t("english")}
             </button>
+
+            <Link
+              to={isGov ? "/gov/search" : "/search"}
+              className="inline-flex items-center justify-center p-2 rounded-full border border-x-border bg-x-bg-secondary text-x-text hover:bg-x-bg-hover transition-colors"
+              title="Search"
+            >
+              <Search size={20} />
+            </Link>
 
             <Link
               to={isGov ? "/gov/notifications" : "/notifications"}

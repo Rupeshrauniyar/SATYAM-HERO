@@ -1,8 +1,8 @@
-import { Loader2, MessageCircle } from "lucide-react";
+import { Loader2, MessageCircle, Search as SearchIcon } from "lucide-react";
 import React, { useState, useEffect, useContext, useRef, useMemo } from "react";
 import axios from "axios";
 import { AppContext } from "../contexts/AppContext";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import "swiper/css";
 import "swiper/css/pagination";
 import "../styles.css";
@@ -50,9 +50,11 @@ const Home = () => {
   const [commentReport, setCommentReport] = useState(null);
   const [insightsReport, setInsightsReport] = useState(null);
   const [shareReport, setShareReport] = useState(null);
+  const [searchInput, setSearchInput] = useState("");
   const { user, setUser } = useContext(AppContext);
   const sharedRef = useRef(null);
   const hasScrolled = useRef(false);
+  const navigate = useNavigate();
 
   const timeAgo = (date) => {
     const seconds = Math.floor((new Date() - new Date(date)) / 1000);
@@ -357,11 +359,33 @@ const Home = () => {
   const showFeed =
     !loading && (pinnedReport || issues.length > 0 || otherReports.length > 0);
 
+  const handleSearchSubmit = (event) => {
+    event.preventDefault();
+    const query = searchInput.trim();
+    if (!query) return;
+    navigate(`/search?q=${encodeURIComponent(query)}`);
+  };
+
   return (
     <div className="x-feed-column">
       <div className="x-page-header">
         <h1>Home</h1>
       </div>
+
+      <form onSubmit={handleSearchSubmit} className="mx-4 mt-4 rounded-2xl border border-x-border bg-x-bg-secondary px-3 py-3 shadow-sm">
+        <div className="flex items-center gap-2">
+          <SearchIcon size={18} className="text-x-text-secondary" />
+          <input
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder="Search reports, wards, categories..."
+            className="flex-1 bg-transparent text-sm outline-none"
+          />
+          <button type="submit" className="x-btn x-btn-primary x-btn-sm">
+            Search
+          </button>
+        </div>
+      </form>
 
       <div className="x-feed-tabs">
         <FeedTab
