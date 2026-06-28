@@ -31,14 +31,16 @@ const reportSchema = new mongoose.Schema(
     ],
     upvotes: [
       {
-        type: mongoose.Schema.Types.ObjectId, // <-- this is important
+        type: mongoose.Schema.Types.ObjectId,
         ref: "User",
+        default: [],
       },
     ],
     downvotes: [
       {
-        type: mongoose.Schema.Types.ObjectId, // <-- this is important
+        type: mongoose.Schema.Types.ObjectId,
         ref: "User",
+        default: [],
       },
     ],
     priority_score: {
@@ -99,6 +101,12 @@ const reportSchema = new mongoose.Schema(
               type: Date,
               default: Date.now,
             },
+            likes: [
+              {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User",
+              },
+            ],
           },
         ],
       },
@@ -110,5 +118,10 @@ const reportSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+reportSchema.index({ userId: 1, createdAt: -1 });
+reportSchema.index({ status: 1, createdAt: -1 });
+reportSchema.index({ ward_number: 1, createdAt: -1 });
+
 const Report = mongoose.model("Report", reportSchema);
 module.exports = Report;

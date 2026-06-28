@@ -7,21 +7,35 @@ const userSchema = new mongoose.Schema(
     },
     upvotes: [
       {
-        type: mongoose.Schema.Types.ObjectId, // <-- this is important
-        ref: "Report",
+        type: mongoose.Schema.Types.ObjectId,
+        default: [],
       },
     ],
     downvotes: [
       {
-        type: mongoose.Schema.Types.ObjectId, // <-- this is important
-        ref: "Report",
+        type: mongoose.Schema.Types.ObjectId,
+        default: [],
       },
     ],
     reports: [
       {
-        type: mongoose.Schema.Types.ObjectId, // <-- this is important
+        type: mongoose.Schema.Types.ObjectId,
         ref: "Report",
-        required: true,
+        default: [],
+      },
+    ],
+    alerts: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "GovPost",
+        default: [],
+      },
+    ],
+    updates: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "GovPost",
+        default: [],
       },
     ],
     ward_number: {

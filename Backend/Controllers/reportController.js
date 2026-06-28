@@ -3,12 +3,13 @@ const Report = require("../Models/ReportModel");
 const GovPost = require("../Models/GovPostModel");
 const User = require("../Models/UserModel");
 const Notification = require("../Models/NotificationModel");
+const { normalizeResourceType, isResourceOwner } = require("../Utils/voteHelpers");
 
 const reportPopulate = [
-  { path: "userId changer", select: "name role -_id" },
-  { path: "comments.userId", select: "name -_id" },
+  { path: "userId changer", select: "name role" },
+  { path: "comments.userId", select: "name" },
 ];
-const govPostPopulate = [{ path: "authorId", select: "name role -_id" }];
+const govPostPopulate = [{ path: "authorId", select: "name role" }];
 
 const createNotification = async ({ userId, reportId, sourceUserId, type, message, commentId, replyId }) => {
   if (!userId || !message) return;
@@ -19,11 +20,11 @@ const createNotification = async ({ userId, reportId, sourceUserId, type, messag
 };
 
 const getResourceModel = (resourceType = "report") => {
-  return resourceType === "govPost" ? GovPost : Report;
+  return normalizeResourceType(resourceType) === "govPost" ? GovPost : Report;
 };
 
 const getOwnerId = (resource) => {
-  return resource?.authorId || resource?.userId;
+  return resource?.authorId?._id || resource?.authorId || resource?.userId?._id || resource?.userId;
 };
 
 const normalizeComments = (comments = [], includeReplies = false) => {
@@ -162,7 +163,8 @@ const getComments = async (req, res) => {
   try {
     const { reportId } = req.params;
     const { resourceType, includeReplies } = req.query;
-    const Model = getResourceModel(resourceType);
+    const normalizedType = normalizeResourceType(resourceType);
+    const Model = getResourceModel(normalizedType);
     const resource = await Model.findById(reportId);
 
     if (!resource) {
@@ -185,7 +187,8 @@ const getCommentReplies = async (req, res) => {
   try {
     const { reportId, commentId } = req.params;
     const { resourceType } = req.query;
-    const Model = getResourceModel(resourceType);
+    const normalizedType = normalizeResourceType(resourceType);
+    const Model = getResourceModel(normalizedType);
     const resource = await Model.findById(reportId);
 
     if (!resource) {
@@ -211,12 +214,13 @@ const addComment = async (req, res) => {
   try {
     const { reportId, text, resourceType = "report" } = req.body;
     const userId = req.user._id;
+    const normalizedType = normalizeResourceType(resourceType);
 
     if (!reportId || !text?.trim()) {
       return res.status(400).json({ success: false, message: "Missing data" });
     }
 
-    const Model = getResourceModel(resourceType);
+    const Model = getResourceModel(normalizedType);
     const resource = await Model.findByIdAndUpdate(
       reportId,
       {
@@ -313,8 +317,9 @@ const trackShare = async (req, res) => {
 
 const likeComment = async (req, res) => {
   try {
-    const { reportId, commentId, method, resourceType = "report" } = req.body;
+    const { reportId, commentId, replyId, method, resourceType = "report" } = req.body;
     const userId = req.user._id;
+    const normalizedType = normalizeResourceType(resourceType);
 
     if (!reportId || !commentId || !method) {
       return res.status(400).json({ success: false, message: "Missing data" });
@@ -324,7 +329,7 @@ const likeComment = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid method" });
     }
 
-    const Model = getResourceModel(resourceType);
+    const Model = getResourceModel(normalizedType);
     const resource = await Model.findById(reportId);
     if (!resource) {
       return res.status(404).json({ success: false, message: "Report not found" });
@@ -335,33 +340,52 @@ const likeComment = async (req, res) => {
       return res.status(404).json({ success: false, message: "Comment not found" });
     }
 
+    let target = comment;
+    let notificationTargetId = comment.userId;
+
+    if (replyId) {
+      const reply = comment.replies.id(replyId);
+      if (!reply) {
+        return res.status(404).json({ success: false, message: "Reply not found" });
+      }
+      target = reply;
+      notificationTargetId = reply.userId;
+    }
+
     if (method === "push") {
-      const already = comment.likes.some((id) => id.toString() === userId.toString());
-      if (!already) comment.likes.push(userId);
+      const already = (target.likes || []).some((id) => id.toString() === userId.toString());
+      if (!already) target.likes.push(userId);
       try {
         const sourceUser = await User.findById(userId).select("name");
-        if (comment.userId.toString() !== userId.toString()) {
+        if (notificationTargetId.toString() !== userId.toString()) {
           await createNotification({
-            userId: comment.userId,
+            userId: notificationTargetId,
             reportId,
             sourceUserId: userId,
             type: "comment_like",
             commentId,
-            message: `${sourceUser?.name || "Someone"} liked your comment.`,
+            replyId,
+            message: `${sourceUser?.name || "Someone"} liked your ${replyId ? "reply" : "comment"}.`,
           });
         }
       } catch (e) {
         console.error("notify comment like error", e);
       }
     } else {
-      comment.likes = comment.likes.filter((id) => id.toString() !== userId.toString());
+      target.likes = (target.likes || []).filter((id) => id.toString() !== userId.toString());
     }
 
     await resource.save();
     await resource.populate({ path: "comments.userId", select: "name -_id" });
+    await resource.populate({ path: "comments.replies.userId", select: "name -_id" });
 
-    const updated = resource.comments.id(commentId);
-    res.status(200).json({ success: true, comment: updated });
+    const updatedComment = resource.comments.id(commentId);
+    if (replyId) {
+      const updatedReply = updatedComment.replies.id(replyId);
+      return res.status(200).json({ success: true, reply: updatedReply, comment: updatedComment });
+    }
+
+    res.status(200).json({ success: true, comment: updatedComment });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false });
@@ -372,12 +396,13 @@ const addReply = async (req, res) => {
   try {
     const { reportId, commentId, text, resourceType = "report" } = req.body;
     const userId = req.user._id;
+    const normalizedType = normalizeResourceType(resourceType);
 
     if (!reportId || !commentId || !text?.trim()) {
       return res.status(400).json({ success: false, message: "Missing data" });
     }
 
-    const Model = getResourceModel(resourceType);
+    const Model = getResourceModel(normalizedType);
     const resource = await Model.findById(reportId);
     if (!resource) {
       return res.status(404).json({ success: false, message: "Report not found" });
@@ -422,6 +447,7 @@ const upvoteReport = async (req, res) => {
   try {
     const { reportId, method, resourceType = "report" } = req.body;
     const userId = req.user._id;
+    const normalizedType = normalizeResourceType(resourceType);
 
     if (!reportId || !method) {
       return res.status(400).json({ success: false, message: "Missing data" });
@@ -431,12 +457,16 @@ const upvoteReport = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid method" });
     }
 
-    const Model = getResourceModel(resourceType);
+    const Model = getResourceModel(normalizedType);
     const resource = await Model.findById(reportId);
     const user = await User.findById(userId);
 
     if (!resource || !user) {
       return res.status(404).json({ success: false, message: "Not found" });
+    }
+
+    if (isResourceOwner(resource, userId)) {
+      return res.status(403).json({ success: false, message: "You cannot vote on your own post." });
     }
 
     if (method === "push") {
@@ -495,6 +525,7 @@ const downvoteReport = async (req, res) => {
   try {
     const { reportId, method, resourceType = "report" } = req.body;
     const userId = req.user._id;
+    const normalizedType = normalizeResourceType(resourceType);
 
     if (!reportId || !method) {
       return res.status(400).json({ success: false, message: "Missing data" });
@@ -504,12 +535,16 @@ const downvoteReport = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid method" });
     }
 
-    const Model = getResourceModel(resourceType);
+    const Model = getResourceModel(normalizedType);
     const resource = await Model.findById(reportId);
     const user = await User.findById(userId);
 
     if (!resource || !user) {
       return res.status(404).json({ success: false, message: "Not found" });
+    }
+
+    if (isResourceOwner(resource, userId)) {
+      return res.status(403).json({ success: false, message: "You cannot vote on your own post." });
     }
 
     if (method === "push") {
@@ -556,11 +591,24 @@ const downvoteReport = async (req, res) => {
 };
 const deleteReport = async (req, res) => {
   try {
-    const { reportId } = req.body;
-    const report = await Report.findOneAndDelete({ _id: reportId });
-    console.log(report);
-    res.status(200).json({ success: true });
+    const { reportId, resourceType = "report" } = req.body;
+    const normalizedType = normalizeResourceType(resourceType);
+    const Model = getResourceModel(normalizedType);
+    const resource = await Model.findById(reportId);
+
+    if (!resource) {
+      return res.status(404).json({ success: false, message: "Not found" });
+    }
+
+    await Model.findByIdAndDelete(reportId);
+    await User.updateMany(
+      { $or: [{ alerts: reportId }, { updates: reportId }, { reports: reportId }] },
+      { $pull: { alerts: reportId, updates: reportId, reports: reportId } },
+    );
+
+    return res.status(200).json({ success: true });
   } catch (err) {
+    console.error(err);
     return res.status(500).json({ success: false });
   }
 };

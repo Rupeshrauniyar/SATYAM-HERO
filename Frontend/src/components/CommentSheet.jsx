@@ -42,6 +42,7 @@ export default function CommentSheet({
   const [replyText, setReplyText] = useState("");
   const [loadingRepliesFor, setLoadingRepliesFor] = useState(null);
   const [replyCache, setReplyCache] = useState({});
+  const [likingReplyId, setLikingReplyId] = useState(null);
 
   useEffect(() => {
     if (!open || !report?._id) return;
@@ -52,8 +53,10 @@ export default function CommentSheet({
     const fetchComments = async () => {
       setLoading(true);
       try {
+        const token = localStorage.getItem("token");
         const res = await axios.get(
           `${import.meta.env.VITE_BACKEND_URL}/api/report/comments/${report._id}?resourceType=${resourceType}&includeReplies=false`,
+          { headers: token ? { Authorization: `Bearer ${token}` } : {} },
         );
         if (res.data.success) setComments(res.data.comments);
       } catch (err) {
@@ -68,7 +71,7 @@ export default function CommentSheet({
     return () => {
       document.body.style.overflow = "auto";
     };
-  }, [open, report?._id]);
+  }, [open, report?._id, resourceType]);
 
   useEffect(() => {
     if (!open) {
@@ -87,6 +90,7 @@ export default function CommentSheet({
       const res = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/report/comment`,
         { reportId: report._id, text: text.trim(), token, resourceType },
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} },
       );
 
       if (res.data.success) {
@@ -103,7 +107,7 @@ export default function CommentSheet({
   };
 
   const handleLike = async (comment) => {
-    if (likingId) return;
+    if (likingId || !user?._id) return;
 
     const liked = hasLiked(comment.likes, user._id);
     setLikingId(comment._id);
@@ -119,18 +123,60 @@ export default function CommentSheet({
           method: liked ? "pull" : "push",
           resourceType,
         },
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} },
       );
 
       if (res.data.success) {
+        const updatedComment = res.data.comment?.toObject ? res.data.comment.toObject() : res.data.comment;
         setComments((prev) =>
-          prev.map((c) => (c._id === comment._id ? res.data.comment : c)),
+          prev.map((c) => (c._id === comment._id ? updatedComment : c)),
         );
-        onCommentLiked?.(report._id, res.data.comment);
+        onCommentLiked?.(report._id, updatedComment);
       }
     } catch (err) {
       console.error(err);
     } finally {
       setLikingId(null);
+    }
+  };
+
+  const handleLikeReply = async (comment, reply) => {
+    if (likingReplyId || !user?._id) return;
+
+    const liked = hasLiked(reply.likes, user._id);
+    setLikingReplyId(reply._id);
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/report/comment/like`,
+        {
+          reportId: report._id,
+          commentId: comment._id,
+          replyId: reply._id,
+          token,
+          method: liked ? "pull" : "push",
+          resourceType,
+        },
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+      );
+
+      if (res.data.success) {
+        const updatedComment = res.data.comment?.toObject ? res.data.comment.toObject() : res.data.comment;
+        setComments((prev) =>
+          prev.map((c) => (c._id === comment._id ? updatedComment : c)),
+        );
+        setReplyCache((prev) => ({
+          ...prev,
+          [comment._id]: (prev[comment._id] || []).map((item) =>
+            item._id === reply._id ? (res.data.reply?.toObject ? res.data.reply.toObject() : res.data.reply) : item,
+          ),
+        }));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLikingReplyId(null);
     }
   };
 
@@ -141,6 +187,7 @@ export default function CommentSheet({
       const res = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/report/comment/reply`,
         { reportId: report._id, commentId: comment._id, text: replyText.trim(), token, resourceType },
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} },
       );
       if (res.data.success) {
         setComments((prev) => prev.map((c) => (c._id === comment._id ? res.data.comment : c)));
@@ -156,8 +203,10 @@ export default function CommentSheet({
     if (replyCache[comment._id]) return;
     setLoadingRepliesFor(comment._id);
     try {
+      const token = localStorage.getItem("token");
       const res = await axios.get(
         `${import.meta.env.VITE_BACKEND_URL}/api/report/comments/${report._id}/replies/${comment._id}?resourceType=${resourceType}`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} },
       );
       if (res.data.success) {
         setReplyCache((prev) => ({ ...prev, [comment._id]: res.data.replies || [] }));
@@ -270,6 +319,17 @@ export default function CommentSheet({
                                     <span className="text-x-text-secondary text-xs">· {timeAgo(r.createdAt)}</span>
                                   </div>
                                   <p className="text-sm mt-1 leading-relaxed break-words">{r.text}</p>
+                                </div>
+                                <div className="mt-2">
+                                  <EngagePill
+                                    icon={Heart}
+                                    count={r.likes?.length || 0}
+                                    active={hasLiked(r.likes, user?._id)}
+                                    variant="like"
+                                    label={hasLiked(r.likes, user?._id) ? "Unlike reply" : "Like reply"}
+                                    onClick={() => handleLikeReply(comment, r)}
+                                    disabled={likingReplyId === r._id}
+                                  />
                                 </div>
                               </div>
                             </div>

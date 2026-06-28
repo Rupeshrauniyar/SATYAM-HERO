@@ -118,7 +118,9 @@ style={{ height: "var(--topbar-h)", background: "var(--color-x-bg)" }}
             to={isGov ? "/gov" : "/"}
             className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
           >
-            <div className="w-8 h-8 rounded-full bg-x-primary flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full  flex items-center justify-center"
+            style={{ background: "var(--color-x-accent)" }}
+            >
               <Feather size={16} className="text-white" strokeWidth={2.5} />
             </div>
             <span className="text-xl font-bold tracking-tight hidden sm:block">

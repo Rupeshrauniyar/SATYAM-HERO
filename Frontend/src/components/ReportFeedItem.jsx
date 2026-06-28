@@ -1,3 +1,4 @@
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ArrowBigDown,
   ArrowBigUp,
@@ -12,7 +13,8 @@ import EngagePill from "./EngagePill";
 
 function hasId(list, id) {
   if (!list || !id) return false;
-  return list.some((item) => item?.toString() === id?.toString());
+  const normalizedId = String(id);
+  return list.some((item) => String(item ?? "") === normalizedId);
 }
 
 export default function ReportFeedItem({
@@ -35,16 +37,24 @@ export default function ReportFeedItem({
 }) {
   const upvotes = issue.upvotes || [];
   const downvotes = issue.downvotes || [];
-  const userUpvotes = user?.upvotes || [];
-  const userDownvotes = user?.downvotes || [];
   const userReports = user?.reports || [];
   const author = issue.userId || issue.authorId || {};
+  const [voteState, setVoteState] = useState({ up: false, down: false });
 
-  const hasUpvoted = hasId(userUpvotes, issue._id);
-  const hasDownvoted = hasId(userDownvotes, issue._id);
-  const isMine = hasId(userReports, issue._id);
+  useEffect(() => {
+    setVoteState({
+      up: hasId(upvotes, user?._id),
+      down: hasId(downvotes, user?._id),
+    });
+  }, [upvotes, downvotes, user?._id]);
+
+  const hasUpvoted = voteState.up;
+  const hasDownvoted = voteState.down;
+  const ownerId = issue?.authorId?._id || issue?.authorId?.id || issue?.authorId || issue?.userId?._id || issue?.userId?.id || issue?.userId;
+  const isMine = Boolean(user?._id && (ownerId?.toString() === user._id?.toString() || hasId(userReports, issue._id)));
   const isExpanded = expanded[issue._id];
   const commentCount = issue.comments?.length || 0;
+  const showStatusControl = Boolean(onChangeStatus && issue?.userId && !issue?.authorId);
 
   return (
     <article
@@ -142,7 +152,7 @@ export default function ReportFeedItem({
                   active={hasUpvoted}
                   variant="up"
                   label="Upvote"
-                  onClick={() => onUpvote(issue._id)}
+                  onClick={() => onUpvote(issue._id,author.role)}
                   disabled={isMine}
                 />
               )}
@@ -153,7 +163,7 @@ export default function ReportFeedItem({
                   active={hasDownvoted}
                   variant="down"
                   label="Downvote"
-                  onClick={() => onDownvote(issue._id)}
+                  onClick={() => onDownvote(issue._id,author.role)}
                   disabled={isMine}
                 />
               )}
@@ -186,7 +196,7 @@ export default function ReportFeedItem({
               )}
             </div>
           ) : null}
-          {onChangeStatus && (
+          {showStatusControl && (
             <select
               value={issue.status}
               onChange={(e) => onChangeStatus(issue, e.target.value)}

@@ -1,19 +1,24 @@
 import { Loader2, LayoutDashboard } from "lucide-react";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
-import { Swiper, SwiperSlide } from "swiper/react";
-import "swiper/css";
-import "swiper/css/pagination";
 import "../styles.css";
-import { Pagination } from "swiper/modules";
+import ReportFeedItem from "../components/ReportFeedItem";
+import CommentSheet from "../components/CommentSheet";
+import InsightsSheet from "../components/InsightsSheet";
+import ShareSheet from "../components/ShareSheet";
+import { AppContext } from "../contexts/AppContext";
 
 const GovDashboard = () => {
+  const { user, setUser } = useContext(AppContext);
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState({});
   const [selectedStatus, setSelectedStatus] = useState(null);
   const [confirmIssue, setConfirmIssue] = useState(null);
+  const [commentReport, setCommentReport] = useState(null);
+  const [insightsReport, setInsightsReport] = useState(null);
+  const [shareReport, setShareReport] = useState(null);
   const statuses = ["Pending", "Progress", "Resolved"];
   const token = localStorage.getItem("token");
 
@@ -50,6 +55,10 @@ const GovDashboard = () => {
     getReport();
   }, []);
 
+  const updateIssueInState = (issueId, updater) => {
+    setIssues((prev) => prev.map((issue) => (issue._id === issueId ? updater(issue) : issue)));
+  };
+
   const handleStatusChange = (issue, newStatus) => {
     setSelectedStatus(newStatus);
     setConfirmIssue(issue);
@@ -72,6 +81,68 @@ const GovDashboard = () => {
       setConfirmIssue(null);
       setSelectedStatus(null);
     }
+  };
+
+  const handleUpvote = async (issueId, role) => {
+    if (!user) return;
+    try {
+      const tokenValue = localStorage.getItem("token");
+      const hasUpvoted = (user.upvotes || []).some((up) => up.toString() === issueId.toString());
+      const res = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/report/upvote`,
+        { reportId: issueId, token: tokenValue, method: hasUpvoted ? "pull" : "push", resourceType: role === "gov" ? "govPost" : "report" },
+      );
+      if (res.status === 200 && res.data.success) {
+        if (!hasUpvoted) {
+          setUser((prev) => ({ ...prev, upvotes: [...(prev.upvotes || []), issueId], downvotes: (prev.downvotes || []).filter((down) => down !== issueId) }));
+          updateIssueInState(issueId, (issue) => ({ ...issue, upvotes: [...(issue.upvotes || []), user._id], downvotes: (issue.downvotes || []).filter((d) => d !== user._id) }));
+        } else {
+          setUser((prev) => ({ ...prev, upvotes: (prev.upvotes || []).filter((up) => up !== issueId) }));
+          updateIssueInState(issueId, (issue) => ({ ...issue, upvotes: (issue.upvotes || []).filter((id) => id !== user._id) }));
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDownvote = async (issueId, role) => {
+    if (!user) return;
+    try {
+      const tokenValue = localStorage.getItem("token");
+      const hasDownvoted = (user.downvotes || []).some((down) => down.toString() === issueId.toString());
+      const res = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/report/downvote`,
+        { reportId: issueId, token: tokenValue, method: hasDownvoted ? "pull" : "push", resourceType: role === "gov" ? "govPost" : "report" },
+      );
+      if (res.status === 200 && res.data.success) {
+        if (!hasDownvoted) {
+          setUser((prev) => ({ ...prev, downvotes: [...(prev.downvotes || []), issueId], upvotes: (prev.upvotes || []).filter((up) => up !== issueId) }));
+          updateIssueInState(issueId, (issue) => ({ ...issue, downvotes: [...(issue.downvotes || []), user._id], upvotes: (issue.upvotes || []).filter((u) => u !== user._id) }));
+        } else {
+          setUser((prev) => ({ ...prev, downvotes: (prev.downvotes || []).filter((down) => down !== issueId) }));
+          updateIssueInState(issueId, (issue) => ({ ...issue, downvotes: (issue.downvotes || []).filter((id) => id !== user._id) }));
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleCommentAdded = (issueId, comment) => {
+    updateIssueInState(issueId, (issue) => ({ ...issue, comments: [...(issue.comments || []), comment] }));
+  };
+
+  const handleCommentLiked = (issueId, updatedComment) => {
+    updateIssueInState(issueId, (issue) => ({ ...issue, comments: (issue.comments || []).map((comment) => (comment._id === updatedComment._id ? updatedComment : comment)) }));
+  };
+
+  const handleShared = (issueId) => {
+    updateIssueInState(issueId, (issue) => ({ ...issue, shares: (issue.shares || 0) + 1 }));
+  };
+
+  const toggleDescription = (id) => {
+    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   if (loading)
@@ -128,58 +199,49 @@ const GovDashboard = () => {
           <Link to="/gov" className="x-btn x-btn-primary">View Issues</Link>
         </div>
       ) : (
-        issues.map((issue) => {
-          const isExpanded = expanded[issue._id];
-          const availableStatuses = statuses.filter((s) => s !== issue.status);
-          return (
-            <article key={issue._id} className="x-feed-item">
-              <div className="flex gap-3">
-                <div className="x-avatar">{issue.userId.name?.charAt(0)?.toUpperCase()}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <span className="font-bold text-sm">{issue.userId.name}</span>
-                    <span className="text-x-text-secondary text-sm">· {timeAgo(issue.createdAt)}</span>
-                  </div>
-                  <p className="text-x-text-secondary text-xs mt-0.5">
-                    Ward {issue.ward_number} · {issue.category} · {issue.status}
-                  </p>
-                  <h4 className="font-bold text-sm mt-2">{issue.title}</h4>
-                  <p className={`text-sm mt-1 ${!isExpanded ? "line-clamp-2" : ""}`}>{issue.description}</p>
-                  {issue.description?.length > 100 && (
-                    <button
-                      onClick={() => setExpanded((p) => ({ ...p, [issue._id]: !p[issue._id] }))}
-                      className="x-link text-sm mt-1"
-                    >
-                      {isExpanded ? "Show less" : "Show more"}
-                    </button>
-                  )}
-                  {issue.media?.length > 0 && (
-                    <div className="mt-3 rounded-2xl overflow-hidden border border-x-border">
-                      <Swiper pagination={{ dynamicBullets: true }} modules={[Pagination]} className="mySwiper">
-                        {issue.media.map((img, i) => (
-                          <SwiperSlide key={i}>
-                            <img src={img} alt="issue" className="w-full max-h-60 object-cover" />
-                          </SwiperSlide>
-                        ))}
-                      </Swiper>
-                    </div>
-                  )}
-                  <select
-                    value={issue.status}
-                    onChange={(e) => handleStatusChange(issue, e.target.value)}
-                    className="x-select mt-3 text-sm py-2"
-                  >
-                    <option value={issue.status}>{issue.status}</option>
-                    {availableStatuses.map((status) => (
-                      <option key={status} value={status}>{status}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </article>
-          );
-        })
+        issues.map((issue) => (
+          <ReportFeedItem
+            key={issue._id}
+            issue={issue}
+            user={user}
+            feedTab="authority"
+            feedTabs={{ PUBLIC: "public", AUTHORITY: "authority" }}
+            expanded={expanded}
+            onToggleDescription={toggleDescription}
+            onUpvote={handleUpvote}
+            onDownvote={handleDownvote}
+            onComment={setCommentReport}
+            onShare={setShareReport}
+            onInsights={setInsightsReport}
+            onChangeStatus={handleStatusChange}
+            timeAgo={timeAgo}
+            statusBadge={() => "x-badge-progress"}
+          />
+        ))
       )}
+
+      <CommentSheet
+        report={commentReport}
+        open={!!commentReport}
+        onClose={() => setCommentReport(null)}
+        onCommentAdded={handleCommentAdded}
+        onCommentLiked={handleCommentLiked}
+        user={user}
+        resourceType="report"
+      />
+
+      <InsightsSheet
+        report={insightsReport}
+        open={!!insightsReport}
+        onClose={() => setInsightsReport(null)}
+      />
+
+      <ShareSheet
+        report={shareReport}
+        open={!!shareReport}
+        onClose={() => setShareReport(null)}
+        onShared={handleShared}
+      />
     </div>
   );
 };

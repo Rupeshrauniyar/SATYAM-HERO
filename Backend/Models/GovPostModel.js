@@ -42,12 +42,14 @@ const govPostSchema = new mongoose.Schema(
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
+        default: [],
       },
     ],
     downvotes: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
+        default: [],
       },
     ],
     comments: [
@@ -90,6 +92,12 @@ const govPostSchema = new mongoose.Schema(
               type: Date,
               default: Date.now,
             },
+            likes: [
+              {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User",
+              },
+            ],
           },
         ],
       },
@@ -101,6 +109,9 @@ const govPostSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+govPostSchema.index({ authorId: 1, postType: 1, createdAt: -1 });
+govPostSchema.index({ postType: 1, createdAt: -1 });
 
 const GovPost = mongoose.model("GovPost", govPostSchema);
 module.exports = GovPost;

@@ -432,21 +432,25 @@ body {
 .x-engage-pill-icon  { display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .x-engage-pill-count { min-width: 0.5rem; }
 
+.x-engage-pill[data-active="true"].x-engage-up,
 .x-engage-pill-active.x-engage-up {
   color:        var(--color-x-up-text);
   background:   var(--color-x-up-bg);
   border-color: var(--color-x-up-text);
 }
+.x-engage-pill[data-active="true"].x-engage-down,
 .x-engage-pill-active.x-engage-down {
   color:        var(--color-x-down-text);
   background:   var(--color-x-down-bg);
   border-color: var(--color-x-down-text);
 }
+.x-engage-pill[data-active="true"].x-engage-like,
 .x-engage-pill-active.x-engage-like {
   color:        var(--color-x-like-text);
   background:   var(--color-x-like-bg);
   border-color: var(--color-x-like-text);
 }
+.x-engage-pill[data-active="true"].x-engage-comment,
 .x-engage-pill-active.x-engage-comment {
   color:        var(--color-x-comment-text);
   background:   var(--color-x-comment-bg);

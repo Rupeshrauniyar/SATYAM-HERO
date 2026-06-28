@@ -7,6 +7,7 @@ export default function EngagePill({
   label,
   disabled = false,
 }) {
+  const isActive = Boolean(active);
   const variantClass = {
     up: "x-engage-up",
     down: "x-engage-down",
@@ -30,10 +31,12 @@ export default function EngagePill({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className={`x-engage-pill ${variantClass} ${active ? "x-engage-pill-active" : ""}`}
+      aria-pressed={isActive}
+      data-active={isActive}
+      className={`x-engage-pill ${variantClass} ${isActive ? "x-engage-pill-active" : ""}`.trim()}
     >
       <span className="x-engage-pill-icon">
-        <Icon size={15} strokeWidth={active ? 2.5 : 2} />
+        <Icon size={15} strokeWidth={isActive ? 2.5 : 2} />
       </span>
       {showCount && (
         <span className="x-engage-pill-count">{count}</span>

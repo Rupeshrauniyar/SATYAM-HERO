@@ -219,7 +219,7 @@ const Home = () => {
     );
   };
 
-  const handleUpvote = async (e) => {
+  const handleUpvote = async (e, role) => {
     if (!user) return;
     try {
       const token = localStorage.getItem("token");
@@ -229,7 +229,7 @@ const Home = () => {
 
       const res = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/report/upvote`,
-        { reportId: e, token, method: hasUpvoted ? "pull" : "push" },
+        { reportId: e, token, method: hasUpvoted ? "pull" : "push", resourceType: role === "gov" ? "govPost" : "report" },
       );
 
       if (res.status === 200 && res.data.success) {
@@ -260,7 +260,7 @@ const Home = () => {
     }
   };
 
-  const handleDownvote = async (e) => {
+  const handleDownvote = async (e, role) => {
     if (!user) return;
     try {
       const token = localStorage.getItem("token");
@@ -270,7 +270,7 @@ const Home = () => {
 
       const res = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/report/downvote`,
-        { reportId: e, token, method: hasDownvoted ? "pull" : "push" },
+        { reportId: e, token, method: hasDownvoted ? "pull" : "push", resourceType: role === "gov" ? "govPost" : "report" },
       );
 
       if (res.status === 200 && res.data.success) {
@@ -346,7 +346,7 @@ const Home = () => {
     onComment: setCommentReport,
     onShare: setShareReport,
     onInsights: setInsightsReport,
-    ...(user && user.role === "gov" && feedTab === FEED_TABS.AUTHORITY ? { onChangeStatus: handleStatusChange } : {}),
+    ...(user && user.role === "gov" ? { onChangeStatus: handleStatusChange } : {}),
   };
 
   const showEmpty =

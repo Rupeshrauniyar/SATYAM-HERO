@@ -28,13 +28,14 @@ function FeedTab({ active, label, onClick }) {
 
 export default function GovProfile() {
   const { user, setUser } = useContext(AppContext);
-  const [feedTab, setFeedTab] = useState(FEED_TABS.AUTHORITY);
+  const [feedTab, setFeedTab] = useState(user?.role === "gov" ? FEED_TABS.AUTHORITY : FEED_TABS.ALERTS);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState({});
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [commentReport, setCommentReport] = useState(null);
   const [insightsReport, setInsightsReport] = useState(null);
   const [shareReport, setShareReport] = useState(null);
@@ -64,6 +65,11 @@ export default function GovProfile() {
 
   useEffect(() => {
     if (!user) return;
+    setFeedTab(user.role === "gov" ? FEED_TABS.AUTHORITY : FEED_TABS.ALERTS);
+  }, [user?.role]);
+
+  useEffect(() => {
+    if (!user) return;
 
     const fetchPosts = async () => {
       setLoading(true);
@@ -73,7 +79,7 @@ export default function GovProfile() {
         const endpoint = feedTab === FEED_TABS.AUTHORITY ? "/api/gov/post/updates" : "/api/gov/post/alerts";
         const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}${endpoint}?page=1&limit=3`);
         const items = feedTab === FEED_TABS.AUTHORITY ? response.data.Reports || [] : response.data.reports || [];
-        setPosts(filterByAuthor(items));
+        setPosts(items);
         setHasMore(Boolean(response.data.hasMore));
       } catch (err) {
         console.error(err);
@@ -225,6 +231,24 @@ export default function GovProfile() {
     }));
   };
 
+  const handleDelete = async (postId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/report/delete`, {
+        reportId: postId,
+        token,
+        resourceType: "govPost",
+      });
+      if (response.status === 200) {
+        setPosts((prev) => prev.filter((post) => post._id !== postId));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setDeleteTarget(null);
+    }
+  };
+
   const timeAgo = (date) => {
     const seconds = Math.floor((new Date() - new Date(date)) / 1000);
     const intervals = [
@@ -280,6 +304,20 @@ export default function GovProfile() {
           <FeedTab active={feedTab === FEED_TABS.ALERTS} label="Alerts" onClick={() => setFeedTab(FEED_TABS.ALERTS)} />
         </div>
 
+        {deleteTarget && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
+            <div className="relative bg-x-bg rounded-2xl border border-x-border w-full max-w-sm p-6 animate-fadeIn">
+              <h3 className="text-lg font-bold mb-2">Delete post?</h3>
+              <p className="text-sm text-x-text-secondary mb-6">This action cannot be undone.</p>
+              <div className="flex gap-3">
+                <button onClick={() => setDeleteTarget(null)} className="x-btn x-btn-secondary flex-1">Cancel</button>
+                <button onClick={() => handleDelete(deleteTarget)} className="x-btn x-btn-primary flex-1 !bg-red-500 hover:!bg-red-600">Delete</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="mt-4 space-y-4">
           {loading ? (
             <div className="flex items-center justify-center py-16">
@@ -289,21 +327,29 @@ export default function GovProfile() {
             <div className="x-panel text-center py-12 text-x-text-secondary">No posts from this account yet.</div>
           ) : (
             posts.map((post) => (
-              <ReportFeedItem
-                key={post._id}
-                issue={post}
-                user={user}
-                feedTab={feedTab}
-                feedTabs={FEED_TABS}
-                expanded={expanded}
-                onToggleDescription={toggleDescription}
-                onUpvote={handleUpvote}
-                onDownvote={handleDownvote}
-                onComment={setCommentReport}
-                onShare={setShareReport}
-                onInsights={setInsightsReport}
-                timeAgo={timeAgo}
-              />
+              <div key={post._id} className="relative">
+                <ReportFeedItem
+                  issue={post}
+                  user={user}
+                  feedTab={feedTab}
+                  feedTabs={FEED_TABS}
+                  expanded={expanded}
+                  onToggleDescription={toggleDescription}
+                  onUpvote={handleUpvote}
+                  onDownvote={handleDownvote}
+                  onComment={setCommentReport}
+                  onShare={setShareReport}
+                  onInsights={setInsightsReport}
+                  timeAgo={timeAgo}
+                />
+                <button
+                  onClick={() => setDeleteTarget(post._id)}
+                  className="absolute top-3 right-3 x-btn-ghost text-red-500"
+                  title="Delete"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /></svg>
+                </button>
+              </div>
             ))
           )}
 

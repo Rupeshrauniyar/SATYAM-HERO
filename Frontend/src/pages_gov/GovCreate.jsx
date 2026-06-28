@@ -73,12 +73,16 @@ export default function CreateIssue() {
       const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/gov/post/create`,
         { formData, token, media: uploadedUrls },
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} },
       );
 
       if (response.status === 200) {
         setUser((prev) => ({
           ...prev,
           reports: [...(prev.reports || []), response.data.post?._id || response.data.postId],
+          ...(formData.postType === "alert" || formData.postType === "alerts"
+            ? { alerts: [...(prev.alerts || []), response.data.post?._id || response.data.postId] }
+            : { updates: [...(prev.updates || []), response.data.post?._id || response.data.postId] }),
         }));
         navigate("/gov");
       }
