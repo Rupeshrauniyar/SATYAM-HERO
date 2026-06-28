@@ -60,12 +60,14 @@ const PhoneAuth = () => {
             py-3
             mb-4
             border
-            border-gray-300
+            border-x-border
             rounded-xl
             text-sm
             outline-none
-            focus:border-black
-            hover:border-black
+            bg-x-bg
+            text-x-text
+            focus:border-x-accent
+            hover:border-x-accent
             transition
           "
             />
@@ -73,7 +75,7 @@ const PhoneAuth = () => {
           {loading ? (
             <button
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-black text-white py-3 rounded-2xl font-medium hover:opacity-90 disabled:opacity-50 transition"
+              className="w-full flex items-center justify-center gap-2 bg-x-primary text-x-text-on-primary py-3 rounded-2xl font-medium hover:opacity-90 disabled:opacity-50 transition"
             >
               <Loader2 className="animate-spin" />
             </button>
@@ -81,7 +83,7 @@ const PhoneAuth = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-black text-white py-3 rounded-2xl font-medium hover:opacity-90 disabled:opacity-50 transition"
+              className="w-full flex items-center justify-center gap-2 bg-x-primary text-x-text-on-primary py-3 rounded-2xl font-medium hover:opacity-90 disabled:opacity-50 transition"
             >
               Continue
               <ArrowRight size={18} />

@@ -33,7 +33,7 @@ export default function EngagePill({
       aria-label={label}
       aria-pressed={isActive}
       data-active={isActive}
-      className={`x-engage-pill ${variantClass} ${isActive ? "x-engage-pill-active" : ""}`.trim()}
+      className={`x-engage-pill ${variantClass} ${isActive ? "x-engage-pill-active" : ""} ${!disabled ? "cursor-pointer" : ""}`.trim()}
     >
       <span className="x-engage-pill-icon">
         <Icon size={15} strokeWidth={isActive ? 2.5 : 2} />

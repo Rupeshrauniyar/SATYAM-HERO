@@ -270,10 +270,10 @@ export default function GovProfile() {
       <div className="h-32 bg-x-bg-secondary border-b border-x-border" />
       <div className="px-4 pb-6">
         <div className="x-avatar x-avatar-lg w-24 h-24 text-3xl border-4 border-x-bg -mt-12 mb-4">
-          {user.name?.charAt(0)?.toUpperCase()}
+          {((user.name || "").trim().charAt(0) || "U").toUpperCase()}
         </div>
-        <h1 className="text-xl font-bold">{user.name}</h1>
-        <p className="text-x-text-secondary text-sm">+977 {user.phone_number}</p>
+        <h1 className="text-xl font-bold">{(user.name || "").trim() || (user.phone_number ? `User ${user.phone_number.slice(-4)}` : "User")}</h1>
+        <p className="text-x-text-secondary text-sm">{user.phone_number ? `+977 ${user.phone_number}` : "No phone number"}</p>
         <span className="inline-block mt-2 x-badge x-badge-progress">Government Official</span>
         <div className="flex items-center gap-2 mt-2">
           {user.verified ? (

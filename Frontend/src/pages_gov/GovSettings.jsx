@@ -28,7 +28,7 @@ export default function GovSettings() {
       <div className="x-page-header"><h1>{t("settings")}</h1></div>
       <div className="p-4">
         <div className="x-panel mb-4 flex items-center gap-4">
-          <div className="x-avatar x-avatar-lg">{user?.name?.charAt(0)?.toUpperCase()}</div>
+          <div className="x-avatar x-avatar-lg">{user?.name?.trim()?.charAt(0)?.toUpperCase()}</div>
           <div>
             <p className="font-bold text-lg">{user?.name}</p>
             <p className="text-sm text-x-text-secondary">{user?.phone_number}</p>
@@ -36,9 +36,9 @@ export default function GovSettings() {
           </div>
         </div>
         <div className="border border-x-border rounded-2xl overflow-hidden divide-y divide-x-border">
-          <SettingsItem icon={<User size={18} />} label={t("account")} description={t("personalInformation")} />
-          <SettingsItem icon={<Shield size={18} />} label={t("privacyAndSecurity")} description={t("permissions")} />
-          <SettingsItem icon={<Bell size={18} />} label={t("notifications")} description={t("pushAndEmailAlerts")} />
+          <SettingsItem icon={<User size={18} />} label={t("account")} description={t("personalInformation")} onClick={() => navigate('/gov/profile')} />
+          <SettingsItem icon={<Shield size={18} />} label={t("privacyAndSecurity")} description={t("permissions")} onClick={() => navigate('/privacy')} />
+          <SettingsItem icon={<Bell size={18} />} label={t("notifications")} description={t("pushAndEmailAlerts")} onClick={() => navigate('/notifications')} />
           <div className="px-4 py-4 bg-x-bg/70">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-start gap-3">
@@ -83,9 +83,9 @@ export default function GovSettings() {
   );
 }
 
-function SettingsItem({ icon, label, description }) {
+function SettingsItem({ icon, label, description, onClick }) {
   return (
-    <button className="w-full px-4 py-4 flex items-center justify-between hover:bg-x-bg-hover transition-colors">
+    <button onClick={onClick} className="w-full px-4 py-4 flex items-center justify-between hover:bg-x-bg-hover transition-colors cursor-pointer">
       <div className="flex items-start gap-3">
         <div className="mt-0.5 text-x-text-secondary">{icon}</div>
         <div className="text-left">

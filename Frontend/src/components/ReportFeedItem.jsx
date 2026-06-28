@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useContext } from "react";
 import {
   ArrowBigDown,
   ArrowBigUp,
@@ -10,6 +10,9 @@ import {
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination } from "swiper/modules";
 import EngagePill from "./EngagePill";
+import axios from "axios";
+import { AppContext } from "../contexts/AppContext";
+import { useTranslation, translateText, getCachedTranslation, setCachedTranslation } from "../utils/translations";
 
 function hasId(list, id) {
   if (!list || !id) return false;
@@ -37,24 +40,41 @@ export default function ReportFeedItem({
 }) {
   const upvotes = issue.upvotes || [];
   const downvotes = issue.downvotes || [];
+  const upvoteCount = Array.isArray(issue.upvotes) ? upvotes.length : issue.upvotesCount || 0;
+  const downvoteCount = Array.isArray(issue.downvotes) ? downvotes.length : issue.downvotesCount || 0;
   const userReports = user?.reports || [];
-  const author = issue.userId || issue.authorId || {};
-  const [voteState, setVoteState] = useState({ up: false, down: false });
+  const author = issue?.user || issue?.author || issue?.userId || issue?.authorId || {};
+  const authorName = (author?.name || issue?.user?.name || issue?.author?.name || issue?.userId?.name || issue?.authorId?.name || user?.name || "User").trim() || "User";
+  const authorRole = author?.role || issue?.user?.role || issue?.author?.role || user?.role;
+  const [voteState, setVoteState] = useState(() => ({
+    up: hasId(upvotes, user?._id) || hasId(user?.upvotes || [], issue?._id),
+    down: hasId(downvotes, user?._id) || hasId(user?.downvotes || [], issue?._id),
+  }));
+  const { language } = useContext(AppContext);
+  const t = useTranslation();
+  const [translatedTitle, setTranslatedTitle] = useState(null);
+  const [translatedDesc, setTranslatedDesc] = useState(null);
+  const [showTranslated, setShowTranslated] = useState(false);
+  const [translating, setTranslating] = useState(false);
 
   useEffect(() => {
-    setVoteState({
-      up: hasId(upvotes, user?._id),
-      down: hasId(downvotes, user?._id),
-    });
-  }, [upvotes, downvotes, user?._id]);
+    const newState = {
+      up: hasId(issue.upvotes || [], user?._id) || hasId(user?.upvotes || [], issue?._id),
+      down: hasId(issue.downvotes || [], user?._id) || hasId(user?.downvotes || [], issue?._id),
+    };
+    setVoteState((prev) => (prev.up === newState.up && prev.down === newState.down ? prev : newState));
+  }, [issue._id, user?._id, user?.upvotes, user?.downvotes, upvoteCount, downvoteCount]);
 
-  const hasUpvoted = voteState.up;
-  const hasDownvoted = voteState.down;
-  const ownerId = issue?.authorId?._id || issue?.authorId?.id || issue?.authorId || issue?.userId?._id || issue?.userId?.id || issue?.userId;
+  const hasUpvoted = Boolean(voteState.up);
+  const hasDownvoted = Boolean(voteState.down);
+  const ownerId = issue?.authorId?._id || issue?.authorId?.id || issue?.authorId || issue?.userId?._id || issue?.userId?.id || issue?.userId || issue?.author?._id || issue?.user?._id;
   const isMine = Boolean(user?._id && (ownerId?.toString() === user._id?.toString() || hasId(userReports, issue._id)));
   const isExpanded = expanded[issue._id];
-  const commentCount = issue.comments?.length || 0;
+  const commentCount = Array.isArray(issue.comments) ? issue.comments.length : issue.commentsCount || 0;
   const showStatusControl = Boolean(onChangeStatus && issue?.userId && !issue?.authorId);
+  const badgeClass = typeof statusBadge === "function"
+    ? statusBadge(issue.status)
+    : (typeof statusBadge === "string" ? statusBadge : "x-badge-pending");
 
   return (
     <article
@@ -72,24 +92,28 @@ export default function ReportFeedItem({
 
         <div className="x-feed-card-header">
           <div className="x-avatar">
-            {author?.name?.charAt(0)?.toUpperCase() || "?"}
+            {(authorName?.trim()?.charAt(0)?.toUpperCase()) || "?"}
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-bold text-[0.9375rem] truncate">
-              {author?.name || "User"}
+              {authorName}
             </p>
             <p className="text-x-text-secondary text-xs mt-0.5">
-              Ward {issue.ward_number} · {timeAgo(issue.createdAt)}
+              {issue.ward_number ? `Ward ${issue.ward_number}` : "Government update"} · {timeAgo(issue.createdAt)}
             </p>
           </div>
         </div>
 
         <div className="x-feed-card-body">
           <div className="flex flex-wrap items-center gap-2">
-            {/* <span className={`x-badge ${statusBadge(issue.status)}`}>
-              {issue.status}
-            </span> */}
-            {/* <span className="text-x-text-secondary text-xs">{issue.category}</span> */}
+            {issue?.status && (
+              <span className={`x-badge ${badgeClass}`}>
+                {issue.status}
+              </span>
+            )}
+            {issue?.category && (
+              <span className="text-x-text-secondary text-xs">{issue.category}</span>
+            )}
             {isMine && (
               <span className="text-x-accent text-xs font-semibold">Your report</span>
             )}
@@ -100,20 +124,70 @@ export default function ReportFeedItem({
             )}
           </div>
 
-          <h4 className="font-bold text-base mt-2 leading-snug">{issue.title}</h4>
+          {/* <div className="flex items-center gap-2">
+            <h4 className="font-bold text-base mt-2 leading-snug">{showTranslated && translatedTitle ? translatedTitle : issue.title}</h4>
+            <button
+              className="x-link text-xs"
+              onClick={async () => {
+                // toggle/show translation
+                if (showTranslated) return setShowTranslated(false);
+                const cached = getCachedTranslation(issue._id);
+                if (cached && cached.title) {
+                  setTranslatedTitle(cached.title);
+                  setTranslatedDesc(cached.description || null);
+                  setShowTranslated(true);
+                  return;
+                }
+                setTranslating(true);
+                try {
+                    // Try backend translate API first
+                    let tt = null;
+                    let td = null;
+                    try {
+                      const backend = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+                      const res = await axios.post(`${backend}/api/translate`, { text: issue.title || '', target: 'ne' });
+                      if (res.data?.success && res.data.translated) tt = res.data.translated;
+                    } catch (e) {
+                      tt = null;
+                    }
+
+                    try {
+                      const res2 = await axios.post(`${backend}/api/translate`, { text: issue.description || '', target: 'ne' });
+                      if (res2.data?.success && res2.data.translated) td = res2.data.translated;
+                    } catch (e) {
+                      td = null;
+                    }
+
+                    // fallback to local translator for any missing translations
+                    if (!tt) tt = translateText(issue.title || '', 'ne');
+                    if (!td) td = translateText(issue.description || '', 'ne');
+
+                    setTranslatedTitle(tt);
+                    setTranslatedDesc(td);
+                    setCachedTranslation(issue._id, { title: tt, description: td });
+                    setShowTranslated(true);
+                } finally {
+                  setTranslating(false);
+                }
+              }}
+              title={t("translate")}
+            >
+              {translating ? "..." : showTranslated ? t("showOriginal") : t("translate")}
+            </button>
+          </div> */}
           <p
             className={`text-x-text text-[0.9375rem] mt-1.5 leading-relaxed whitespace-pre-wrap ${
               !isExpanded && !featured ? "line-clamp-3" : ""
             }`}
           >
-            {issue.description}
+            {showTranslated && translatedDesc ? translatedDesc : (issue.description || issue.body || "")}
           </p>
-          {issue.description?.length > 120 && !featured && (
+          {(issue.description || issue.body)?.length > 120 && !featured && (
             <button
               onClick={() => onToggleDescription(issue._id)}
-              className="x-link text-sm mt-1"
+              className="x-link text-sm mt-1 cursor-pointer"
             >
-              {isExpanded ? "Show less" : "Show more"}
+                {isExpanded ? t("showLess") : t("showMore")}
             </button>
           )}
 
@@ -148,22 +222,22 @@ export default function ReportFeedItem({
               {onUpvote && (
                 <EngagePill
                   icon={ArrowBigUp}
-                  count={upvotes.length}
+                  count={upvoteCount}
                   active={hasUpvoted}
                   variant="up"
                   label="Upvote"
-                  onClick={() => onUpvote(issue._id,author.role)}
+                  onClick={() => onUpvote(issue._id, authorRole)}
                   disabled={isMine}
                 />
               )}
               {onDownvote && (
                 <EngagePill
                   icon={ArrowBigDown}
-                  count={downvotes.length}
+                  count={downvoteCount}
                   active={hasDownvoted}
                   variant="down"
                   label="Downvote"
-                  onClick={() => onDownvote(issue._id,author.role)}
+                  onClick={() => onDownvote(issue._id, authorRole)}
                   disabled={isMine}
                 />
               )}
@@ -200,7 +274,7 @@ export default function ReportFeedItem({
             <select
               value={issue.status}
               onChange={(e) => onChangeStatus(issue, e.target.value)}
-              className="x-select mt-3 text-sm py-2"
+              className="x-select mt-3 text-sm py-2 cursor-pointer"
             >
               <option value={issue.status}>{issue.status}</option>
               {["Pending", "Progress", "Resolved"].filter(s => s !== issue.status).map(s => (

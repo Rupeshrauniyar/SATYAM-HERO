@@ -12,6 +12,7 @@ import { AppContext } from "../contexts/AppContext";
 const GovDashboard = () => {
   const { user, setUser } = useContext(AppContext);
   const [issues, setIssues] = useState([]);
+  const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState({});
   const [selectedStatus, setSelectedStatus] = useState(null);
@@ -45,8 +46,10 @@ const GovDashboard = () => {
           `${import.meta.env.VITE_BACKEND_URL}/api/gov/report/getMyWork`,
           { token },
         );
-        if (response.status === 200 && response.data.Reports)
-          setIssues(response.data.Reports);
+        if (response.status === 200) {
+          if (response.data.Reports) setIssues(response.data.Reports);
+          if (response.data.summary) setSummary(response.data.summary);
+        }
       } catch (err) {
         console.error(err);
       }
@@ -93,7 +96,20 @@ const GovDashboard = () => {
         { reportId: issueId, token: tokenValue, method: hasUpvoted ? "pull" : "push", resourceType: role === "gov" ? "govPost" : "report" },
       );
       if (res.status === 200 && res.data.success) {
-        if (!hasUpvoted) {
+        const nextUser = res.data.user || null;
+        const nextResource = res.data.resource || null;
+
+        if (nextUser) {
+          setUser((prev) => ({ ...(prev || {}), ...nextUser }));
+        }
+
+        if (nextResource) {
+          updateIssueInState(issueId, (issue) => ({
+            ...issue,
+            upvotes: nextResource.upvotes || [],
+            downvotes: nextResource.downvotes || [],
+          }));
+        } else if (!hasUpvoted) {
           setUser((prev) => ({ ...prev, upvotes: [...(prev.upvotes || []), issueId], downvotes: (prev.downvotes || []).filter((down) => down !== issueId) }));
           updateIssueInState(issueId, (issue) => ({ ...issue, upvotes: [...(issue.upvotes || []), user._id], downvotes: (issue.downvotes || []).filter((d) => d !== user._id) }));
         } else {
@@ -116,7 +132,20 @@ const GovDashboard = () => {
         { reportId: issueId, token: tokenValue, method: hasDownvoted ? "pull" : "push", resourceType: role === "gov" ? "govPost" : "report" },
       );
       if (res.status === 200 && res.data.success) {
-        if (!hasDownvoted) {
+        const nextUser = res.data.user || null;
+        const nextResource = res.data.resource || null;
+
+        if (nextUser) {
+          setUser((prev) => ({ ...(prev || {}), ...nextUser }));
+        }
+
+        if (nextResource) {
+          updateIssueInState(issueId, (issue) => ({
+            ...issue,
+            upvotes: nextResource.upvotes || [],
+            downvotes: nextResource.downvotes || [],
+          }));
+        } else if (!hasDownvoted) {
           setUser((prev) => ({ ...prev, downvotes: [...(prev.downvotes || []), issueId], upvotes: (prev.upvotes || []).filter((up) => up !== issueId) }));
           updateIssueInState(issueId, (issue) => ({ ...issue, downvotes: [...(issue.downvotes || []), user._id], upvotes: (issue.upvotes || []).filter((u) => u !== user._id) }));
         } else {
@@ -174,24 +203,13 @@ const GovDashboard = () => {
 
       <div className="p-4 grid grid-cols-3 gap-2 border-b border-x-border">
         <div className="x-panel text-center py-3">
-          <p className="text-xl font-bold">{issues.length}</p>
+          <p className="text-xl font-bold">{summary?.totalHandled ?? issues.length}</p>
           <p className="text-xs text-x-text-secondary">Worked On</p>
         </div>
-        {/* <div className="x-panel text-center py-3">
-          <p className="text-xl font-bold text-x-accent">
-            {issues.reduce((s, i) => s + i.upvotes.length, 0)}
-          </p>
-          <p className="text-xs text-x-text-secondary">Upvotes</p>
-        </div> */}
-        {/* <div className="x-panel text-center py-3">
-          <p className="text-xl font-bold">
-            {issues.reduce((s, i) => s + i.downvotes.length, 0)}
-          </p>
-          <p className="text-xs text-x-text-secondary">Downvotes</p>
-        </div> */}
+        {/* Upvotes/Downvotes removed — use detailed view for counts when needed */}
       </div>
 
-      {issues.length < 1 ? (
+      {!(issues.length > 0 || (summary && summary.totalHandled > 0)) ? (
         <div className="flex flex-col items-center justify-center py-24 px-6 text-center">
           <LayoutDashboard size={48} className="text-x-text-secondary mb-4" strokeWidth={1.25} />
           <h3 className="text-xl font-bold mb-2">No work yet</h3>
@@ -199,7 +217,8 @@ const GovDashboard = () => {
           <Link to="/gov" className="x-btn x-btn-primary">View Issues</Link>
         </div>
       ) : (
-        issues.map((issue) => (
+        issues.length > 0 ? (
+          issues.map((issue) => (
           <ReportFeedItem
             key={issue._id}
             issue={issue}
@@ -217,7 +236,10 @@ const GovDashboard = () => {
             timeAgo={timeAgo}
             statusBadge={() => "x-badge-progress"}
           />
-        ))
+          ))
+        ) : (
+          <div className="p-6 text-center text-x-text-secondary">You have worked on {summary?.totalHandled} items.</div>
+        )
       )}
 
       <CommentSheet

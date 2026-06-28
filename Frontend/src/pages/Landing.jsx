@@ -91,26 +91,26 @@ function ReportCard({ report, delay = 0 }) {
     return () => clearTimeout(timer);
   }, [delay]);
   return (
-    <div ref={ref} style={{ background:"#fff", border:"1px solid #E5E7EB", borderRadius:14, padding:"18px 20px", opacity:visible?1:0, transform:visible?"translateY(0)":"translateY(18px)", transition:"opacity 0.5s ease, transform 0.5s ease", boxShadow:"0 2px 8px rgba(15,31,61,0.06)" }}>
+    <div ref={ref} style={{ background:"var(--color-x-bg-elevated)", border:"1px solid var(--color-x-border)", borderRadius:14, padding:"18px 20px", opacity:visible?1:0, transform:visible?"translateY(0)":"translateY(18px)", transition:"opacity 0.5s ease, transform 0.5s ease", boxShadow:"0 2px 8px var(--color-x-sheet-shadow)" }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          <span style={{ fontSize:11, color:"#6B7280", fontWeight:500, letterSpacing:"0.04em" }}>{report.id}</span>
-          <span style={{ fontSize:11, fontWeight:600, padding:"2px 8px", borderRadius:99, background:"#F3F4F6", color:"#374151" }}>{report.ward}</span>
+          <span style={{ fontSize:11, color:"var(--color-x-text-secondary)", fontWeight:500, letterSpacing:"0.04em" }}>{report.id}</span>
+          <span style={{ fontSize:11, fontWeight:600, padding:"2px 8px", borderRadius:99, background:"var(--color-x-bg-secondary)", color:"var(--color-x-text)" }}>{report.ward}</span>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, padding:"3px 10px", borderRadius:99, background:s.bg, color:s.color, fontWeight:600 }}>
           <div style={{ width:6, height:6, borderRadius:"50%", background:s.dot }} />
           {s.label}
         </div>
       </div>
-      <p style={{ fontSize:14, fontWeight:600, color:"#0F1F3D", margin:"0 0 10px", lineHeight:1.4 }}>{report.title}</p>
+      <p style={{ fontSize:14, fontWeight:600, color:"var(--color-x-text)", margin:"0 0 10px", lineHeight:1.4 }}>{report.title}</p>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <span style={{ fontSize:11, padding:"2px 8px", borderRadius:99, background:`${report.catColor}18`, color:report.catColor, fontWeight:600 }}>{report.cat}</span>
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-          <span style={{ fontSize:12, color:"#9CA3AF", display:"flex", alignItems:"center", gap:4 }}>
+          <span style={{ fontSize:12, color:"var(--color-x-text-muted)", display:"flex", alignItems:"center", gap:4 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
             {report.votes}
           </span>
-          <span style={{ fontSize:11, color:"#9CA3AF" }}>{report.time}</span>
+          <span style={{ fontSize:11, color:"var(--color-x-text-muted)" }}>{report.time}</span>
         </div>
       </div>
     </div>
@@ -131,33 +131,33 @@ function HeroMockup() {
   ];
   const s = steps[step];
   return (
-    <div style={{ background:"#fff", borderRadius:20, border:"1px solid #E5E7EB", boxShadow:"0 20px 60px rgba(15,31,61,0.12), 0 4px 16px rgba(15,31,61,0.06)", overflow:"hidden", width:"100%", maxWidth:420 }}>
-      <div style={{ background:"#F9FAFB", borderBottom:"1px solid #E5E7EB", padding:"10px 16px", display:"flex", alignItems:"center", gap:8 }}>
+    <div style={{ background:"var(--color-x-bg-elevated)", borderRadius:20, border:"1px solid var(--color-x-border)", boxShadow:"0 20px 60px rgba(15,31,61,0.12), 0 4px 16px var(--color-x-sheet-shadow)", overflow:"hidden", width:"100%", maxWidth:420 }}>
+      <div style={{ background:"var(--color-x-bg-secondary)", borderBottom:"1px solid var(--color-x-border)", padding:"10px 16px", display:"flex", alignItems:"center", gap:8 }}>
         <div style={{ display:"flex", gap:5 }}>
           {["#FF5F57","#FEBC2E","#28C840"].map(c => <div key={c} style={{ width:10, height:10, borderRadius:"50%", background:c }} />)}
         </div>
         <div style={{ flex:1, background:"#F3F4F6", borderRadius:6, padding:"4px 10px", fontSize:11, color:"#9CA3AF", marginLeft:8 }}>CivicReport.np/reports</div>
       </div>
-      <div style={{ background:"#0F1F3D", padding:"14px 20px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+      <div style={{ background:"var(--color-x-primary)", padding:"14px 20px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          <div style={{ width:28, height:28, background:"#F59E0B", borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ width:28, height:28, background:"var(--color-x-accent)", borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
           </div>
-          <span style={{ color:"#fff", fontWeight:700, fontSize:14 }}>CivicReport</span>
+          <span style={{ color:"var(--color-x-text-on-primary)", fontWeight:700, fontSize:14 }}>CivicReport</span>
         </div>
         <div style={{ display:"flex", gap:12, alignItems:"center" }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <div style={{ width:28, height:28, borderRadius:"50%", background:"#F59E0B22", display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <span style={{ fontSize:11, color:"#F59E0B", fontWeight:700 }}>NP</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-x-text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <div style={{ width:28, height:28, borderRadius:"50%", background:"var(--color-x-accent)22", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <span style={{ fontSize:11, color:"var(--color-x-accent)", fontWeight:700 }}>NP</span>
           </div>
         </div>
       </div>
       <div style={{ padding:"20px" }}>
-        <div style={{ background:"#EFF6FF", border:"1px solid #BFDBFE", borderRadius:10, padding:"10px 14px", marginBottom:16, display:"flex", alignItems:"center", gap:8 }}>
+        <div style={{ background:"var(--color-x-bg-secondary)", border:"1px solid var(--color-x-border)", borderRadius:10, padding:"10px 14px", marginBottom:16, display:"flex", alignItems:"center", gap:8 }}>
           <div style={{ width:8, height:8, borderRadius:"50%", background:"#3B82F6", flexShrink:0 }} />
           <span style={{ fontSize:12, color:"#1D4ED8", fontWeight:500 }}>Alert from Ward 9: Road repair begins Monday</span>
         </div>
-        <div style={{ border:"1px solid #E5E7EB", borderRadius:12, padding:"14px 16px", background:"#FAFAFA" }}>
+        <div style={{ border:"1px solid var(--color-x-border)", borderRadius:12, padding:"14px 16px", background:"var(--color-x-bg)" }}>
           <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
             <span style={{ fontSize:11, color:"#6B7280", fontWeight:500 }}>RPT-1078 · Ward 9</span>
             <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, fontWeight:600, padding:"3px 10px", borderRadius:99, background:s.bg, color:s.color, transition:"all 0.4s ease" }}>
@@ -188,7 +188,7 @@ function HeroMockup() {
             </div>
           </div>
         </div>
-        <div style={{ display:"flex", justifyContent:"space-around", paddingTop:16, borderTop:"1px solid #F3F4F6", marginTop:16 }}>
+          <div style={{ display:"flex", justifyContent:"space-around", paddingTop:16, borderTop:"1px solid var(--color-x-border)", marginTop:16 }}>
           {[{label:"Home",active:false},{label:"Reports",active:true},{label:"Alerts",active:false},{label:"Insights",active:false}].map(item => (
             <div key={item.label} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
               <div style={{ width:20, height:4, borderRadius:99, background:item.active?"#F59E0B":"transparent" }} />

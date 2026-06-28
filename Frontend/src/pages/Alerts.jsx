@@ -32,7 +32,7 @@ const Alerts = () => {
         const response = await axios.get(
           `${import.meta.env.VITE_BACKEND_URL}/api/gov/post/alerts?page=1&limit=3`,
         );
-        setAlerts(response.data.reports || []);
+        setAlerts(mergeUniqueItems([], response.data.reports || []));
         setHasMore(Boolean(response.data.hasMore));
       } catch (err) {
         console.error(err);
@@ -67,7 +67,7 @@ const Alerts = () => {
       const response = await axios.get(
         `${import.meta.env.VITE_BACKEND_URL}/api/gov/post/alerts?page=${nextPage}&limit=3`,
       );
-      setAlerts((prev) => [...prev, ...(response.data.reports || [])]);
+      setAlerts((prev) => mergeUniqueItems(prev, response.data.reports || []));
       setPage(nextPage);
       setHasMore(Boolean(response.data.hasMore));
     } catch (err) {
@@ -104,7 +104,20 @@ const Alerts = () => {
         { reportId: id, token, method: hasUpvoted ? "pull" : "push", resourceType: "govPost" },
       );
       if (res.status === 200 && res.data.success) {
-        if (!hasUpvoted) {
+        const nextUser = res.data.user || null;
+        const nextResource = res.data.resource || null;
+
+        if (nextUser) {
+          setUser((prev) => ({ ...(prev || {}), ...nextUser }));
+        }
+
+        if (nextResource) {
+          updateAlertInState(id, (alert) => ({
+            ...alert,
+            upvotes: nextResource.upvotes || [],
+            downvotes: nextResource.downvotes || [],
+          }));
+        } else if (!hasUpvoted) {
           setUser((prev) => ({
             ...prev,
             upvotes: [...prev.upvotes, id],
@@ -141,7 +154,20 @@ const Alerts = () => {
         { reportId: id, token, method: hasDownvoted ? "pull" : "push", resourceType: "govPost" },
       );
       if (res.status === 200 && res.data.success) {
-        if (!hasDownvoted) {
+        const nextUser = res.data.user || null;
+        const nextResource = res.data.resource || null;
+
+        if (nextUser) {
+          setUser((prev) => ({ ...(prev || {}), ...nextUser }));
+        }
+
+        if (nextResource) {
+          updateAlertInState(id, (alert) => ({
+            ...alert,
+            upvotes: nextResource.upvotes || [],
+            downvotes: nextResource.downvotes || [],
+          }));
+        } else if (!hasDownvoted) {
           setUser((prev) => ({
             ...prev,
             downvotes: [...prev.downvotes, id],
@@ -203,6 +229,12 @@ const Alerts = () => {
       if (count >= 1) return `${count}${interval.label}`;
     }
     return "now";
+  };
+
+  const mergeUniqueItems = (existingItems = [], incomingItems = []) => {
+    const seenIds = new Set(existingItems.map((item) => item?._id).filter(Boolean));
+    const deduped = incomingItems.filter((item) => item?._id && !seenIds.has(item._id));
+    return [...existingItems, ...deduped];
   };
 
   return (

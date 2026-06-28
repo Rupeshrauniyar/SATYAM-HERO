@@ -64,8 +64,20 @@ const Search = ({ basePath = "/search", heading = null, intro = null, action = n
       );
 
       if (res.status === 200 && res.data.success) {
-        if (!hasUpvoted) {
-          // Update local state
+        const nextResource = res.data.resource || null;
+        if (nextResource) {
+          setResults((prev) =>
+            prev.map((report) =>
+              report._id === e
+                ? {
+                    ...report,
+                    upvotes: nextResource.upvotes || [],
+                    downvotes: nextResource.downvotes || [],
+                  }
+                : report
+            )
+          );
+        } else if (!hasUpvoted) {
           setResults((prev) =>
             prev.map((report) =>
               report._id === e
@@ -109,7 +121,20 @@ const Search = ({ basePath = "/search", heading = null, intro = null, action = n
       );
 
       if (res.status === 200 && res.data.success) {
-        if (!hasDownvoted) {
+        const nextResource = res.data.resource || null;
+        if (nextResource) {
+          setResults((prev) =>
+            prev.map((report) =>
+              report._id === e
+                ? {
+                    ...report,
+                    upvotes: nextResource.upvotes || [],
+                    downvotes: nextResource.downvotes || [],
+                  }
+                : report
+            )
+          );
+        } else if (!hasDownvoted) {
           setResults((prev) =>
             prev.map((report) =>
               report._id === e
@@ -190,7 +215,7 @@ const Search = ({ basePath = "/search", heading = null, intro = null, action = n
       <div className="x-page-header space-y-4">
         <div className="flex-1">
           <h1>{heading || t("searchResults")}</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-x-text-secondary mt-1">
             {query
               ? intro || t("showingResults", { query })
               : t("enterSearchTerm")}
@@ -198,7 +223,7 @@ const Search = ({ basePath = "/search", heading = null, intro = null, action = n
         </div>
         {action && <div className="flex-shrink-0">{action}</div>}
         <form onSubmit={handleSearchSubmit} className="relative w-full max-w-xl">
-          <SearchIcon size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <SearchIcon size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-x-text-muted" />
           <input
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}

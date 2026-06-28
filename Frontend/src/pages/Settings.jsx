@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 export default function Settings() {
-  const { user, setUser, setIsAuthenticated, theme, setTheme } = useContext(AppContext);
+  const { user, setUser, setIsAuthenticated, theme, setTheme, language, toggleLanguage } = useContext(AppContext);
   const navigate = useNavigate();
   const [confirmLogout, setConfirmLogout] = useState(false);
   const t = useTranslation();
@@ -44,7 +44,7 @@ export default function Settings() {
       <div className="p-4">
         <div className="x-panel mb-4 flex items-center gap-4">
           <div className="x-avatar x-avatar-lg">
-            {user?.name?.charAt(0)?.toUpperCase()}
+            {user?.name?.trim()?.charAt(0)?.toUpperCase()}
           </div>
           <div>
             <p className="font-bold text-lg">{user?.name}</p>
@@ -60,9 +60,9 @@ export default function Settings() {
         </div>
 
         <div className="border border-x-border rounded-2xl overflow-hidden divide-y divide-x-border">
-          <SettingsItem icon={<User size={18} />} label={t("profile")} description={t("personalInformation")} />
-          <SettingsItem icon={<Shield size={18} />} label={t("privacyAndSecurity")} description={t("permissions")} />
-          <SettingsItem icon={<Bell size={18} />} label={t("notifications")} description={t("pushAndEmailAlerts")} />
+          <SettingsItem icon={<User size={18} />} label={t("profile")} description={t("personalInformation")} onClick={() => navigate('/profile')} />
+          <SettingsItem icon={<Shield size={18} />} label={t("privacyAndSecurity")} description={t("permissions")} onClick={() => navigate('/privacy')} />
+          <SettingsItem icon={<Bell size={18} />} label={t("notifications")} description={t("pushAndEmailAlerts")} onClick={() => navigate('/notifications')} />
           <div className="px-4 py-4 border-t border-x-border bg-x-bg/70">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-start gap-3">
@@ -82,6 +82,21 @@ export default function Settings() {
                     {t(mode)}
                   </button>
                 ))}
+              </div>
+            </div>
+          </div>
+          <div className="px-4 py-4 border-t border-x-border bg-x-bg/70">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 text-x-text-secondary"><User size={18} /></div>
+                <div className="text-left">
+                  <p className="font-bold text-sm">Language</p>
+                  <p className="text-xs text-x-text-secondary mt-0.5">{language === 'ne' ? 'नेपाली' : 'English'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => toggleLanguage()} className="rounded-full px-3 py-1.5 text-xs font-semibold border bg-x-bg hover:bg-x-bg-hover">{language === 'ne' ? 'नेपाली' : 'EN'}</button>
+                <button onClick={() => toggleLanguage()} className="x-btn x-btn-sm">Switch</button>
               </div>
             </div>
           </div>
@@ -130,9 +145,9 @@ export default function Settings() {
   );
 }
 
-function SettingsItem({ icon, label, description }) {
+function SettingsItem({ icon, label, description, onClick }) {
   return (
-    <button className="w-full px-4 py-4 flex items-center justify-between hover:bg-x-bg-hover transition-colors">
+    <button onClick={onClick} className="w-full px-4 py-4 flex items-center justify-between hover:bg-x-bg-hover transition-colors cursor-pointer">
       <div className="flex items-start gap-3">
         <div className="mt-0.5 text-x-text-secondary">{icon}</div>
         <div className="text-left">

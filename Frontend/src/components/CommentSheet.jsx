@@ -107,7 +107,7 @@ export default function CommentSheet({
   };
 
   const handleLike = async (comment) => {
-    if (likingId || !user?._id) return;
+    if (likingId === comment._id || !user?._id) return;
 
     const liked = hasLiked(comment.likes, user._id);
     setLikingId(comment._id);
@@ -129,7 +129,7 @@ export default function CommentSheet({
       if (res.data.success) {
         const updatedComment = res.data.comment?.toObject ? res.data.comment.toObject() : res.data.comment;
         setComments((prev) =>
-          prev.map((c) => (c._id === comment._id ? updatedComment : c)),
+          prev.map((c) => (c._id === comment._id ? { ...updatedComment, replyCount: c.replyCount } : c)),
         );
         onCommentLiked?.(report._id, updatedComment);
       }
@@ -141,7 +141,7 @@ export default function CommentSheet({
   };
 
   const handleLikeReply = async (comment, reply) => {
-    if (likingReplyId || !user?._id) return;
+    if (likingReplyId === reply._id || !user?._id) return;
 
     const liked = hasLiked(reply.likes, user._id);
     setLikingReplyId(reply._id);
@@ -162,14 +162,11 @@ export default function CommentSheet({
       );
 
       if (res.data.success) {
-        const updatedComment = res.data.comment?.toObject ? res.data.comment.toObject() : res.data.comment;
-        setComments((prev) =>
-          prev.map((c) => (c._id === comment._id ? updatedComment : c)),
-        );
+        const updatedReply = res.data.reply?.toObject ? res.data.reply.toObject() : res.data.reply;
         setReplyCache((prev) => ({
           ...prev,
           [comment._id]: (prev[comment._id] || []).map((item) =>
-            item._id === reply._id ? (res.data.reply?.toObject ? res.data.reply.toObject() : res.data.reply) : item,
+            item._id === reply._id ? updatedReply : item,
           ),
         }));
       }
@@ -258,8 +255,8 @@ export default function CommentSheet({
 
                 return (
                   <div key={comment._id} className="flex gap-3">
-                    <div className="x-avatar w-9 h-9 text-sm shrink-0">
-                      {comment.userId?.name?.charAt(0)?.toUpperCase() || "?"}
+                      <div className="x-avatar w-9 h-9 text-sm shrink-0">
+                      {comment.userId?.name?.trim()?.charAt(0)?.toUpperCase() || "?"}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="x-panel !p-3 !rounded-2xl">
@@ -286,7 +283,7 @@ export default function CommentSheet({
                           disabled={likingId === comment._id}
                         />
                         <button
-                          className="x-link text-sm"
+                          className="x-link text-sm cursor-pointer"
                           onClick={() => setReplyingTo(replyingTo === comment._id ? null : comment._id)}
                         >
                           Reply
@@ -295,7 +292,7 @@ export default function CommentSheet({
 
                       {comment.replyCount > 0 && !replyCache[comment._id] && (
                         <button
-                          className="x-link text-sm mt-3 inline-flex items-center gap-1"
+                          className="x-link text-sm mt-3 inline-flex items-center gap-1 cursor-pointer"
                           onClick={() => loadReplies(comment)}
                         >
                           {loadingRepliesFor === comment._id ? (
@@ -311,7 +308,7 @@ export default function CommentSheet({
                         <div className="mt-3 space-y-3">
                           {replyCache[comment._id].map((r) => (
                             <div key={r._id} className="flex gap-3 items-start">
-                              <div className="x-avatar w-8 h-8 text-xs shrink-0">{r.userId?.name?.charAt(0)?.toUpperCase() || "?"}</div>
+                              <div className="x-avatar w-8 h-8 text-xs shrink-0">{r.userId?.name?.trim()?.charAt(0)?.toUpperCase() || "?"}</div>
                               <div className="flex-1 min-w-0">
                                 <div className="x-panel !p-3 !rounded-2xl">
                                   <div className="flex items-center gap-2">
@@ -346,7 +343,7 @@ export default function CommentSheet({
                             placeholder="Write a reply..."
                             className="x-input flex-1 py-2 text-sm"
                           />
-                          <button onClick={() => handleReply(comment)} className="x-btn x-btn-accent x-btn-sm">Reply</button>
+                          <button onClick={() => handleReply(comment)} className="x-btn x-btn-accent x-btn-sm cursor-pointer">Reply</button>
                         </div>
                       )}
                     </div>

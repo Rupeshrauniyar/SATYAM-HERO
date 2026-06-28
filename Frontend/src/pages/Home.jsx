@@ -72,6 +72,12 @@ const Home = () => {
     return "now";
   };
 
+  const mergeUniqueItems = (existingItems = [], incomingItems = []) => {
+    const seenIds = new Set(existingItems.map((item) => item?._id).filter(Boolean));
+    const deduped = incomingItems.filter((item) => item?._id && !seenIds.has(item._id));
+    return [...existingItems, ...deduped];
+  };
+
   useEffect(() => {
     if (sharedReportId) {
       setFeedTab(FEED_TABS.PUBLIC);
@@ -116,7 +122,7 @@ const Home = () => {
         }
 
         setPinnedReport(pinned);
-        setIssues(reports);
+        setIssues(mergeUniqueItems([], reports));
         setHasMore(Boolean(response.data.hasMore));
       } catch (err) {
         console.error(err);
@@ -172,7 +178,7 @@ const Home = () => {
         `${import.meta.env.VITE_BACKEND_URL}${endpoint}?page=${nextPage}&limit=3`,
       );
       const moreReports = response.data.Reports || [];
-      setIssues((prev) => [...prev, ...moreReports]);
+      setIssues((prev) => mergeUniqueItems(prev, moreReports));
       setPage(nextPage);
       setHasMore(Boolean(response.data.hasMore));
     } catch (err) {
@@ -235,11 +241,24 @@ const Home = () => {
       );
 
       if (res.status === 200 && res.data.success) {
-        if (!hasUpvoted) {
+        const nextUser = res.data.user || null;
+        const nextResource = res.data.resource || null;
+
+        if (nextUser) {
+          setUser((prev) => ({ ...(prev || {}), ...nextUser }));
+        }
+
+        if (nextResource) {
+          updateIssueInState(e, (issue) => ({
+            ...issue,
+            upvotes: nextResource.upvotes || [],
+            downvotes: nextResource.downvotes || [],
+          }));
+        } else if (!hasUpvoted) {
           setUser((prev) => ({
-            ...prev,
-            upvotes: [...prev.upvotes, e],
-            downvotes: prev.downvotes.filter((down) => down !== e),
+            ...(prev || {}),
+            upvotes: [...(prev?.upvotes || []), e],
+            downvotes: (prev?.downvotes || []).filter((down) => down !== e),
           }));
           updateIssueInState(e, (issue) => ({
             ...issue,
@@ -248,8 +267,8 @@ const Home = () => {
           }));
         } else {
           setUser((prev) => ({
-            ...prev,
-            upvotes: prev.upvotes.filter((up) => up !== e),
+            ...(prev || {}),
+            upvotes: (prev?.upvotes || []).filter((up) => up !== e),
           }));
           updateIssueInState(e, (issue) => ({
             ...issue,
@@ -276,11 +295,24 @@ const Home = () => {
       );
 
       if (res.status === 200 && res.data.success) {
-        if (!hasDownvoted) {
+        const nextUser = res.data.user || null;
+        const nextResource = res.data.resource || null;
+
+        if (nextUser) {
+          setUser((prev) => ({ ...(prev || {}), ...nextUser }));
+        }
+
+        if (nextResource) {
+          updateIssueInState(e, (issue) => ({
+            ...issue,
+            upvotes: nextResource.upvotes || [],
+            downvotes: nextResource.downvotes || [],
+          }));
+        } else if (!hasDownvoted) {
           setUser((prev) => ({
-            ...prev,
-            downvotes: [...prev.downvotes, e],
-            upvotes: prev.upvotes.filter((up) => up !== e),
+            ...(prev || {}),
+            downvotes: [...(prev?.downvotes || []), e],
+            upvotes: (prev?.upvotes || []).filter((up) => up !== e),
           }));
           updateIssueInState(e, (issue) => ({
             ...issue,
@@ -289,8 +321,8 @@ const Home = () => {
           }));
         } else {
           setUser((prev) => ({
-            ...prev,
-            downvotes: prev.downvotes.filter((down) => down !== e),
+            ...(prev || {}),
+            downvotes: (prev?.downvotes || []).filter((down) => down !== e),
           }));
           updateIssueInState(e, (issue) => ({
             ...issue,
@@ -372,20 +404,7 @@ const Home = () => {
         <h1>Home</h1>
       </div>
 
-      <form onSubmit={handleSearchSubmit} className="mx-4 mt-4 rounded-2xl border border-x-border bg-x-bg-secondary px-3 py-3 shadow-sm">
-        <div className="flex items-center gap-2">
-          <SearchIcon size={18} className="text-x-text-secondary" />
-          <input
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="Search reports, wards, categories..."
-            className="flex-1 bg-transparent text-sm outline-none"
-          />
-          <button type="submit" className="x-btn x-btn-primary x-btn-sm">
-            Search
-          </button>
-        </div>
-      </form>
+     
 
       <div className="x-feed-tabs">
         <FeedTab
@@ -399,7 +418,20 @@ const Home = () => {
           onClick={() => setFeedTab(FEED_TABS.AUTHORITY)}
         />
       </div>
-
+ <form onSubmit={handleSearchSubmit} className="mx-2 mt-4 rounded-full border border-x-border bg-x-bg-secondary px-3 py-3 shadow-sm">
+        <div className="flex items-center gap-2">
+          <SearchIcon size={18} className="text-x-text-secondary" />
+          <input
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder="Search reports, wards, categories..."
+            className="flex-1 bg-transparent text-sm outline-none"
+          />
+          <button type="submit" className="x-btn x-btn-primary x-btn-sm">
+            Search
+          </button>
+        </div>
+      </form>
       {confirmIssue && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setConfirmIssue(null)} />

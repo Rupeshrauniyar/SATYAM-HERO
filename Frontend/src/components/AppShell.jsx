@@ -10,17 +10,16 @@ import {
   Settings,
   Search,
   Feather,
-  Siren,
-  Bell,
-  Globe,
   BarChart3,
+  Globe,
+  Bell,
+  Siren,
 } from "lucide-react";
 
 const PUBLIC_NAV = [
   { to: "/", icon: Home, label: "Home" },
   { to: "/alerts", icon: Siren, label: "Alerts" },
   { to: "/create", icon: PlusSquare, label: "Report" },
-  { to: "/search", icon: Search, label: "Search" },
   { to: "/profile", icon: User2, label: "Profile" },
 
   // { to: "/settings", icon: Settings, label: "Settings" },
@@ -125,7 +124,7 @@ style={{ height: "var(--topbar-h)", background: "var(--color-x-bg)" }}
             <div className="w-8 h-8 rounded-full  flex items-center justify-center"
             style={{ background: "var(--color-x-accent)" }}
             >
-              <Feather size={16} className="text-white" strokeWidth={2.5} />
+              <Feather size={16} className="text-x-text-on-accent" strokeWidth={2.5} />
             </div>
             <span className="text-xl font-bold tracking-tight hidden sm:block">
               {isGov ? "CivicReport Gov" : "CivicReport"}
@@ -277,10 +276,10 @@ style={{ height: "var(--topbar-h)", background: "var(--color-x-bg)" }}
               <div className="x-panel">
                 <div className="flex items-center gap-3">
                   <div className="x-avatar">
-                    {user.name?.charAt(0)?.toUpperCase()}
+                    {((user.name || "").trim().charAt(0) || "U").toUpperCase()}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-bold truncate">{user.name}</p>
+                    <p className="font-bold truncate">{(user.name || "").trim() || (user.phone_number ? `User ${user.phone_number.slice(-4)}` : "User")}</p>
                     <p className="text-x-text-secondary text-sm truncate">
                       {user.role === "gov" ? "Government Official" : "Citizen"}
                     </p>

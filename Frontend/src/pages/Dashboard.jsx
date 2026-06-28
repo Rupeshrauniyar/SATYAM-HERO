@@ -1,5 +1,7 @@
 import { Loader2, Trash, LayoutDashboard } from "lucide-react";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
+import { AppContext } from "../contexts/AppContext";
+import { useTranslation } from "../utils/translations";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
@@ -10,6 +12,7 @@ import { Pagination } from "swiper/modules";
 
 const Dashboard = () => {
   const [issues, setIssues] = useState([]);
+  const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -39,11 +42,14 @@ const Dashboard = () => {
     const getReport = async () => {
       try {
         const response = await axios.post(
-          `${import.meta.env.VITE_BACKEND_URL}/api/report/getMy`,
+          `${import.meta.env.VITE_BACKEND_URL}/api/report/getMy?recent=1`,
           { token },
         );
-        if (response.status === 200 && response.data.Reports)
-          setIssues(response.data.Reports);
+        if (response.status === 200) {
+          if (response.data.Reports) setIssues(response.data.Reports);
+          if (response.data.recent) setIssues(response.data.recent);
+          if (response.data.summary) setSummary(response.data.summary);
+        }
       } catch (err) {
         console.error(err);
       }
@@ -68,9 +74,11 @@ const Dashboard = () => {
     setLoading(false);
   };
 
-  const totalReports = issues.length || 1;
-  const totalUpvotes = issues.reduce((sum, i) => sum + i.upvotes.length, 0);
-  const totalDownvotes = issues.reduce((sum, i) => sum + i.downvotes.length, 0);
+  const totalReports = summary?.totalReports ?? (issues.length || 1);
+  const totalUpvotes = summary?.upvotes ?? issues.reduce((sum, i) => sum + (Array.isArray(i.upvotes) ? i.upvotes.length : i.upvotesCount || 0), 0);
+  const totalDownvotes = summary?.downvotes ?? issues.reduce((sum, i) => sum + (Array.isArray(i.downvotes) ? i.downvotes.length : i.downvotesCount || 0), 0);
+
+  const t = useTranslation();
 
   if (loading)
     return (
@@ -82,23 +90,23 @@ const Dashboard = () => {
   return (
     <div>
       <div className="x-page-header">
-        <h1>Dashboard</h1>
+        <h1>{t("dashboard")}</h1>
       </div>
 
       {deleteTarget && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
           <div className="relative bg-x-bg rounded-2xl border border-x-border w-full max-w-sm p-6 animate-fadeIn">
-            <h3 className="text-lg font-bold mb-2">Delete report?</h3>
-            <p className="text-sm text-x-text-secondary mb-6">This action cannot be undone.</p>
+            <h3 className="text-lg font-bold mb-2">{t("deleteReportQuestion")}</h3>
+            <p className="text-sm text-x-text-secondary mb-6">{t("deleteActionConfirm")}</p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteTarget(null)} className="x-btn x-btn-secondary flex-1">Cancel</button>
-              <button
-                onClick={() => { handleDelete(deleteTarget); setDeleteTarget(null); }}
-                className="x-btn x-btn-primary flex-1 !bg-red-500 hover:!bg-red-600"
-              >
-                Delete
-              </button>
+              <button onClick={() => setDeleteTarget(null)} className="x-btn x-btn-secondary flex-1">{t("cancel")}</button>
+                <button
+                  onClick={() => { handleDelete(deleteTarget); setDeleteTarget(null); }}
+                  className="x-btn x-btn-primary flex-1 !bg-red-500 hover:!bg-red-600"
+                >
+                  {t("delete")}
+                </button>
             </div>
           </div>
         </div>
@@ -107,26 +115,26 @@ const Dashboard = () => {
       <div className="p-4 grid grid-cols-3 gap-2 border-b border-x-border">
         <div className="x-panel text-center py-3">
           <p className="text-xl font-bold">{issues.length}</p>
-          <p className="text-xs text-x-text-secondary">Reports</p>
+          <p className="text-xs text-x-text-secondary">{t("reportsLabel")}</p>
         </div>
         <div className="x-panel text-center py-3">
           <p className="text-xl font-bold text-x-accent">{totalUpvotes}</p>
-          <p className="text-xs text-x-text-secondary">Upvotes</p>
+          <p className="text-xs text-x-text-secondary">{t("upvotesLabel")}</p>
         </div>
         <div className="x-panel text-center py-3">
           <p className="text-xl font-bold">{totalDownvotes}</p>
-          <p className="text-xs text-x-text-secondary">Downvotes</p>
+          <p className="text-xs text-x-text-secondary">{t("downvotesLabel")}</p>
         </div>
       </div>
 
       {issues.length < 1 ? (
         <div className="flex flex-col items-center justify-center py-24 px-6 text-center">
           <LayoutDashboard size={48} className="text-x-text-secondary mb-4" strokeWidth={1.25} />
-          <h3 className="text-xl font-bold mb-2">No reports yet</h3>
+          <h3 className="text-xl font-bold mb-2">{t("noReportsYet")}</h3>
           <p className="text-x-text-secondary text-sm mb-6">
-            Your submitted issues will appear here.
+            {t("yourSubmittedWillAppear")}
           </p>
-          <Link to="/create" className="x-btn x-btn-primary">Report an Issue</Link>
+          <Link to="/create" className="x-btn x-btn-primary">{t("reportIssue")}</Link>
         </div>
       ) : (
         issues.map((issue) => {
@@ -134,7 +142,7 @@ const Dashboard = () => {
           return (
             <article key={issue._id} className="x-feed-item">
               <div className="flex gap-3">
-                <div className="x-avatar">{issue.userId.name?.charAt(0)?.toUpperCase()}</div>
+                <div className="x-avatar">{issue.userId.name?.trim()?.charAt(0)?.toUpperCase()}</div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1 flex-wrap">
@@ -156,7 +164,7 @@ const Dashboard = () => {
                   <p className={`text-sm mt-1 ${!isExpanded ? "line-clamp-2" : ""}`}>{issue.description}</p>
                   {issue.description?.length > 100 && (
                     <button onClick={() => toggleDescription(issue._id)} className="x-link text-sm mt-1">
-                      {isExpanded ? "Show less" : "Show more"}
+                      {isExpanded ? t("showLess") : t("showMore")}
                     </button>
                   )}
                   {issue.media?.length > 0 && (
@@ -171,7 +179,7 @@ const Dashboard = () => {
                     </div>
                   )}
                   <p className="text-x-text-secondary text-sm mt-2">
-                    {issue.upvotes.length} upvotes · {issue.downvotes.length} downvotes
+                    {(Array.isArray(issue.upvotes) ? issue.upvotes.length : issue.upvotesCount || 0)} {t("upvotesLabel")} · {(Array.isArray(issue.downvotes) ? issue.downvotes.length : issue.downvotesCount || 0)} {t("downvotesLabel")}
                   </p>
                 </div>
               </div>

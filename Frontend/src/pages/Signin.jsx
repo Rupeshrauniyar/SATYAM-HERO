@@ -99,22 +99,19 @@ export default function PhoneAuth() {
     <div className="min-h-screen  flex items-center justify-center ">
       {popup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {" "}
           <div
             className="absolute inset-0 bg-black/30 backdrop-blur-sm"
             onClick={() => setPopup(null)}
-          />{" "}
-          <div className="relative bg-white rounded-xl shadow-lg p-5 w-80 text-center animate-fadeIn">
-            {" "}
+          />
+          <div className="relative bg-x-bg-elevated rounded-xl shadow-lg p-5 w-80 text-center animate-fadeIn">
             <button
               onClick={() => setPopup(null)}
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700"
+              className="absolute top-2 right-2 text-x-text-secondary hover:text-x-text"
             >
-              {" "}
-              <X size={16} />{" "}
-            </button>{" "}
-            <p className="text-gray-800 text-sm">{popup}</p>{" "}
-          </div>{" "}
+              <X size={16} />
+            </button>
+            <p className="text-x-text text-sm">{popup}</p>
+          </div>
         </div>
       )}
       <div className="w-screen px-2 ">
@@ -140,21 +137,21 @@ export default function PhoneAuth() {
               <input
                 disabled
                 value="+977"
-                className="w-20 rounded-md px-3 py-2 text-sm  border border-zinc-700"
+                className="w-20 rounded-md px-3 py-2 text-sm border border-x-border bg-x-bg text-x-text"
               />
               <input
                 type="tel"
                 placeholder="Phone number"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="flex-1 rounded-md px-3 py-2 text-sm  border border-zinc-700 outline-none focus:border-zinc-500"
+                className="flex-1 rounded-md px-3 py-2 text-sm border border-x-border outline-none bg-x-bg text-x-text focus:border-x-accent"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-black border border-zinc-700 py-2.5 rounded-md text-zinc-300 text-sm disabled:opacity-50"
+              className="w-full bg-x-primary border border-x-border py-2.5 rounded-md text-x-text-on-primary text-sm disabled:opacity-50"
             >
               {loading ? "Sending OTP…" : "Continue"}
             </button>
@@ -172,12 +169,12 @@ export default function PhoneAuth() {
               placeholder="Enter 6-digit OTP"
               value={otp}
               onChange={(e) => setOtp(e.target.value)}
-              className="w-full rounded-md px-3 py-2 text-sm  border border-zinc-700 outline-none focus:border-zinc-500"
+              className="w-full rounded-md px-3 py-2 text-sm border border-x-border outline-none bg-x-bg text-x-text focus:border-x-accent"
             />
 
             <button
               disabled={loading}
-              className="w-full bg-black border border-zinc-700 py-2.5 rounded-md text-zinc-300 text-sm disabled:opacity-50"
+              className="w-full bg-x-primary border border-x-border py-2.5 rounded-md text-x-text-on-primary text-sm disabled:opacity-50"
             >
               {loading ? "Verifying…" : "Continue"}
             </button>

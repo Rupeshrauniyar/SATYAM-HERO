@@ -36,7 +36,7 @@ const normalizeComments = (comments = [], includeReplies = false) => {
       replies: includeReplies ? doc.replies || [] : [],
     };
   });
-};
+}; 
 
 const createReport = async (req, res) => {
   try {
@@ -79,12 +79,56 @@ const getReport = async (req, res) => {
     const limit = Math.min(20, Math.max(1, parseInt(req.query.limit || "3", 10)));
     const skip = (page - 1) * limit;
 
+    // Use aggregation to only return necessary fields and counts (avoid sending full comments/replies)
+    const pipeline = [
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $project: {
+          title: 1,
+          description: 1,
+          category: 1,
+          ward_number: 1,
+          status: 1,
+          media: 1,
+          createdAt: 1,
+          shares: 1,
+          userId: 1,
+          upvotesCount: { $size: { $ifNull: ["$upvotes", []] } },
+          downvotesCount: { $size: { $ifNull: ["$downvotes", []] } },
+          commentsCount: { $size: { $ifNull: ["$comments", []] } },
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          title: 1,
+          description: 1,
+          category: 1,
+          ward_number: 1,
+          status: 1,
+          media: 1,
+          createdAt: 1,
+          shares: 1,
+          upvotesCount: 1,
+          downvotesCount: 1,
+          commentsCount: 1,
+          user: { name: "$user.name", role: "$user.role", _id: "$user._id" },
+        },
+      },
+    ];
+
     const [Reports, total] = await Promise.all([
-      Report.find()
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .populate(reportPopulate),
+      Report.aggregate(pipeline),
       Report.countDocuments(),
     ]);
 
@@ -92,6 +136,25 @@ const getReport = async (req, res) => {
   } catch (err) {
     console.log(err);
     res.status(404).json({ success: false });
+  }
+};
+
+const getInsights = async (req, res) => {
+  try {
+    // overall counts and status breakdown
+    const now = new Date();
+    const last24 = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    const total = await Report.countDocuments();
+    const pending = await Report.countDocuments({ status: "Pending" });
+    const progress = await Report.countDocuments({ status: "Progress" });
+    const resolved = await Report.countDocuments({ status: "Resolved" });
+    const last24Hours = await Report.countDocuments({ createdAt: { $gte: last24 } });
+
+    return res.status(200).json({ success: true, summary: { total, pending, progress, resolved, last24Hours } });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false });
   }
 };
 
@@ -121,12 +184,30 @@ const getAuthorityReports = async (req, res) => {
     const limit = Math.min(20, Math.max(1, parseInt(req.query.limit || "3", 10)));
     const skip = (page - 1) * limit;
 
+    // Aggregate to return trimmed gov posts with counts and author info
+    const pipeline = [
+      { $match: { postType: "update" } },
+      { $sort: { updatedAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $project: {
+          title: 1,
+          body: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          media: 1,
+          authorId: 1,
+          commentsCount: { $size: { $ifNull: ["$comments", []] } },
+        },
+      },
+      { $lookup: { from: "users", localField: "authorId", foreignField: "_id", as: "author" } },
+      { $unwind: { path: "$author", preserveNullAndEmptyArrays: true } },
+      { $project: { title: 1, body: 1, createdAt: 1, updatedAt: 1, media: 1, commentsCount: 1, author: { name: "$author.name", role: "$author.role", _id: "$author._id" } } },
+    ];
+
     const [updates, total] = await Promise.all([
-      GovPost.find({ postType: "update" })
-        .sort({ updatedAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .populate(govPostPopulate),
+      GovPost.aggregate(pipeline),
       GovPost.countDocuments({ postType: "update" }),
     ]);
 
@@ -143,12 +224,19 @@ const getAlerts = async (req, res) => {
     const limit = Math.min(20, Math.max(1, parseInt(req.query.limit || "3", 10)));
     const skip = (page - 1) * limit;
 
+    const pipeline = [
+      { $match: { postType: "alert" } },
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      { $project: { title: 1, body: 1, createdAt: 1, media: 1, authorId: 1, commentsCount: { $size: { $ifNull: ["$comments", []] } } } },
+      { $lookup: { from: "users", localField: "authorId", foreignField: "_id", as: "author" } },
+      { $unwind: { path: "$author", preserveNullAndEmptyArrays: true } },
+      { $project: { title: 1, body: 1, createdAt: 1, media: 1, commentsCount: 1, author: { name: "$author.name", role: "$author.role", _id: "$author._id" } } },
+    ];
+
     const [alerts, total] = await Promise.all([
-      GovPost.find({ postType: "alert" })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .populate(govPostPopulate),
+      GovPost.aggregate(pipeline),
       GovPost.countDocuments({ postType: "alert" }),
     ]);
 
@@ -291,9 +379,32 @@ const searchReports = async (req, res) => {
     }
 
     const searchQuery = conditions.length === 0 ? {} : { $or: conditions };
-    const Reports = await Report.find(searchQuery)
-      .sort({ createdAt: -1 })
-      .populate(reportPopulate);
+    // Use aggregation to return trimmed report objects (counts instead of full comments)
+    const pipeline = [
+      { $match: searchQuery },
+      { $sort: { createdAt: -1 } },
+      {
+        $project: {
+          title: 1,
+          description: 1,
+          category: 1,
+          ward_number: 1,
+          status: 1,
+          media: 1,
+          createdAt: 1,
+          shares: 1,
+          userId: 1,
+          upvotesCount: { $size: { $ifNull: ["$upvotes", []] } },
+          downvotesCount: { $size: { $ifNull: ["$downvotes", []] } },
+          commentsCount: { $size: { $ifNull: ["$comments", []] } },
+        },
+      },
+      { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "user" } },
+      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+      { $project: { title: 1, description: 1, category: 1, ward_number: 1, status: 1, media: 1, createdAt: 1, shares: 1, upvotesCount: 1, downvotesCount: 1, commentsCount: 1, user: { name: "$user.name", role: "$user.role", _id: "$user._id" } } },
+    ];
+
+    const Reports = await Report.aggregate(pipeline);
 
     return res.status(200).json({ success: true, reports: Reports });
   } catch (err) {
@@ -469,16 +580,27 @@ const upvoteReport = async (req, res) => {
       return res.status(403).json({ success: false, message: "You cannot vote on your own post." });
     }
 
+    let updatedResource;
+    let updatedUser;
+
     if (method === "push") {
-      await Promise.all([
-        Model.findByIdAndUpdate(reportId, {
-          $pull: { downvotes: userId },
-          $addToSet: { upvotes: userId },
-        }),
-        User.findByIdAndUpdate(userId, {
-          $pull: { downvotes: reportId },
-          $addToSet: { upvotes: reportId },
-        }),
+      [updatedResource, updatedUser] = await Promise.all([
+        Model.findByIdAndUpdate(
+          reportId,
+          {
+            $pull: { downvotes: userId },
+            $addToSet: { upvotes: userId },
+          },
+          { new: true },
+        ),
+        User.findByIdAndUpdate(
+          userId,
+          {
+            $pull: { downvotes: reportId },
+            $addToSet: { upvotes: reportId },
+          },
+          { new: true },
+        ),
       ]);
 
       const sourceUser = await User.findById(userId).select("name");
@@ -495,17 +617,31 @@ const upvoteReport = async (req, res) => {
     }
 
     if (method === "pull") {
-      await Promise.all([
-        Model.findByIdAndUpdate(reportId, {
-          $pull: { upvotes: userId },
-        }),
-        User.findByIdAndUpdate(userId, {
-          $pull: { upvotes: reportId },
-        }),
+      [updatedResource, updatedUser] = await Promise.all([
+        Model.findByIdAndUpdate(
+          reportId,
+          {
+            $pull: { upvotes: userId },
+          },
+          { new: true },
+        ),
+        User.findByIdAndUpdate(
+          userId,
+          {
+            $pull: { upvotes: reportId },
+          },
+          { new: true },
+        ),
       ]);
     }
 
-    return res.status(200).json({ success: true });
+    return res.status(200).json({
+      success: true,
+      resource: updatedResource,
+      user: updatedUser,
+      action: method,
+      resourceType: normalizedType,
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false });
@@ -514,10 +650,27 @@ const upvoteReport = async (req, res) => {
 const getMyReport = async (req, res) => {
   try {
     const userId = req.user._id;
-    console.log(userId);
-    const Reports = await Report.find({ userId }).populate(reportPopulate);
-    res.status(200).json({ Reports });
+    // return summary counts for the user's reports
+    const pipeline = [
+      { $match: { userId: userId } },
+      { $project: { upvotesCount: { $size: { $ifNull: ["$upvotes", []] } }, downvotesCount: { $size: { $ifNull: ["$downvotes", []] } }, commentsCount: { $size: { $ifNull: ["$comments", []] } } } },
+      { $group: { _id: null, totalReports: { $sum: 1 }, upvotes: { $sum: "$upvotesCount" }, downvotes: { $sum: "$downvotesCount" }, comments: { $sum: "$commentsCount" } } },
+    ];
+
+    const result = await Report.aggregate(pipeline);
+    const summary = result[0] || { totalReports: 0, upvotes: 0, downvotes: 0, comments: 0 };
+
+    const reports = await Report.find({ userId })
+      .sort({ createdAt: -1 })
+      .populate("userId", "name role")
+      .lean();
+
+    const includeRecent = req.query.recent === "1";
+    const recent = includeRecent ? reports.slice(0, 10) : [];
+
+    res.status(200).json({ success: true, summary, reports, recent });
   } catch (err) {
+    console.error(err);
     return res.status(500).json({ success: false });
   }
 };
@@ -547,16 +700,27 @@ const downvoteReport = async (req, res) => {
       return res.status(403).json({ success: false, message: "You cannot vote on your own post." });
     }
 
+    let updatedResource;
+    let updatedUser;
+
     if (method === "push") {
-      await Promise.all([
-        Model.findByIdAndUpdate(reportId, {
-          $pull: { upvotes: userId },
-          $addToSet: { downvotes: userId },
-        }),
-        User.findByIdAndUpdate(userId, {
-          $pull: { upvotes: reportId },
-          $addToSet: { downvotes: reportId },
-        }),
+      [updatedResource, updatedUser] = await Promise.all([
+        Model.findByIdAndUpdate(
+          reportId,
+          {
+            $pull: { upvotes: userId },
+            $addToSet: { downvotes: userId },
+          },
+          { new: true },
+        ),
+        User.findByIdAndUpdate(
+          userId,
+          {
+            $pull: { upvotes: reportId },
+            $addToSet: { downvotes: reportId },
+          },
+          { new: true },
+        ),
       ]);
 
       const sourceUser = await User.findById(userId).select("name");
@@ -573,17 +737,31 @@ const downvoteReport = async (req, res) => {
     }
 
     if (method === "pull") {
-      await Promise.all([
-        Model.findByIdAndUpdate(reportId, {
-          $pull: { downvotes: userId },
-        }),
-        User.findByIdAndUpdate(userId, {
-          $pull: { downvotes: reportId },
-        }),
+      [updatedResource, updatedUser] = await Promise.all([
+        Model.findByIdAndUpdate(
+          reportId,
+          {
+            $pull: { downvotes: userId },
+          },
+          { new: true },
+        ),
+        User.findByIdAndUpdate(
+          userId,
+          {
+            $pull: { downvotes: reportId },
+          },
+          { new: true },
+        ),
       ]);
     }
 
-    return res.status(200).json({ success: true });
+    return res.status(200).json({
+      success: true,
+      resource: updatedResource,
+      user: updatedUser,
+      action: method,
+      resourceType: normalizedType,
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false });
@@ -662,4 +840,5 @@ module.exports = {
   editReport,
   deleteReport,
   getMyReport,
+  getInsights,
 };

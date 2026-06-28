@@ -165,7 +165,76 @@ const dictionary = {
     writeReply: "जवाफ लेख्नुहोस्...",
     noCommentsYet: "अझै कुनै टिप्पणी छैन। संवाद सुरु गर्नुहोस्।",
     reportIssueCTA: "समस्या रिपोर्ट गर्नुहोस्",
+    translate: "अनुवाद गर्नुहोस्",
+    showOriginal: "मूल देखाउनुहोस्",
+    showTranslation: "अनुवाद देखाउनुहोस्",
+    showMore: "थप देखाउनुहोस्",
+    showLess: "कम देखाउनुहोस्",
+    deleteReportQuestion: "रिपोर्ट मेट्ने?",
+    deleteActionConfirm: "यो कार्य पूर्ववत गर्न सकिन्न।",
+    cancel: "रद्द गर्नुहोस्",
+    delete: "मेटाउनुहोस्",
+    reportsLabel: "रिपोर्टहरू",
+    upvotesLabel: "अपभोट",
+    downvotesLabel: "डाउनभोट",
+    noReportsYet: "अझै कुनै रिपोर्ट छैन",
+    yourSubmittedWillAppear: "तपाईंले पठाउनुभएको समस्या यहाँ देखिनेछ।",
   },
+};
+
+// Naive, local, dictionary-based translator (best-effort).
+export const translateText = (text, target = "ne") => {
+  if (!text || target !== "ne") return text;
+
+  // Phrase-level replacements from dictionary
+  let out = String(text);
+  const engEntries = Object.entries(dictionary.en).sort((a, b) => b[1].length - a[1].length);
+  for (const [, engVal] of engEntries) {
+    if (!engVal || typeof engVal !== "string") continue;
+    const neKey = Object.keys(dictionary.ne).find((k) => dictionary.en[k] === engVal || dictionary.ne[k]);
+    const neVal = neKey ? dictionary.ne[neKey] : null;
+    if (neVal) {
+      const re = new RegExp(engVal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+      out = out.replace(re, neVal);
+    }
+  }
+
+  // Word-level fallback: map exact word matches from english values to nepali where possible
+  const words = out.split(/(\s+|[.,!?;:\-()"'])/g);
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i].trim();
+    if (!w) continue;
+    // try to find english entry equal to this word (case-insensitive)
+    const key = Object.keys(dictionary.en).find((k) => dictionary.en[k].toLowerCase() === w.toLowerCase());
+    if (key && dictionary.ne[key]) {
+      words[i] = words[i].replace(new RegExp(w, "i"), dictionary.ne[key]);
+    }
+  }
+  out = words.join("");
+
+  return out;
+};
+
+export const getCachedTranslation = (id) => {
+  try {
+    const raw = localStorage.getItem("__translations_cache_v1");
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    return obj[id] || null;
+  } catch (e) {
+    return null;
+  }
+};
+
+export const setCachedTranslation = (id, payload) => {
+  try {
+    const raw = localStorage.getItem("__translations_cache_v1");
+    const obj = raw ? JSON.parse(raw) : {};
+    obj[id] = { ...(obj[id] || {}), ...payload };
+    localStorage.setItem("__translations_cache_v1", JSON.stringify(obj));
+  } catch (e) {
+    // ignore
+  }
 };
 
 export const useTranslation = () => {
@@ -174,7 +243,7 @@ export const useTranslation = () => {
   return (key, params = {}) => {
     const value = dictionary[language]?.[key] || dictionary.en[key] || key;
     return Object.keys(params).reduce(
-      (text, param) => text.replace(new RegExp(`\\{${param}\\}`, "g"), params[param]),
+      (text, param) => text.replace(new RegExp(`\{${param}\}`, "g"), params[param]),
       value,
     );
   };

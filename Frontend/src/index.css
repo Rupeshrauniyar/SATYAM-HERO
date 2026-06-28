@@ -457,7 +457,7 @@ body {
   border-color: var(--color-x-comment-text);
 }
 
-.x-comment-like-row { display: flex; align-items: center; margin-top: 0.5rem; }
+.x-comment-like-row { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.5rem; }
 
 /* ─────────────────────────────────────────────
    PANEL / AVATAR / LINK

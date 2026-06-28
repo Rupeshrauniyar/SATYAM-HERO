@@ -10,7 +10,10 @@ import {
 } from "lucide-react";
 
 function buildShareUrl(reportId) {
-  return `${window.location.origin}/?report=${reportId}`;
+  const envBase = import.meta.env.VITE_MAIN_URL || "";
+  const origin = typeof window !== "undefined" && window.location && window.location.origin ? window.location.origin : "";
+  const base = (envBase || origin).replace(/\/$/, "");
+  return `${base}/?report=${reportId}`;
 }
 
 function buildShareText(report) {

@@ -53,14 +53,52 @@ const getGovUpdates = async (req, res) => {
     const limit = Math.min(20, Math.max(1, parseInt(req.query.limit || "3", 10)));
     const skip = (page - 1) * limit;
  
-    const [updates, total] = await Promise.all([
-      GovPost.find({ postType: "update" })
-        .sort({ updatedAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .populate("authorId", "name role"),
-      GovPost.countDocuments({ postType: "update" }),
-    ]);
+    // return trimmed gov updates (counts + author) using aggregation
+    const pipeline = [
+      { $match: { postType: "update" } },
+      { $sort: { updatedAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $project: {
+          title: 1,
+          description: 1,
+          body: "$description",
+          createdAt: 1,
+          updatedAt: 1,
+          media: 1,
+          authorId: 1,
+          ward_number: 1,
+          status: 1,
+          shares: 1,
+          upvotes: 1,
+          downvotes: 1,
+          commentsCount: { $size: { $ifNull: ["$comments", []] } },
+        },
+      },
+      { $lookup: { from: "users", localField: "authorId", foreignField: "_id", as: "author" } },
+      { $unwind: { path: "$author", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          title: 1,
+          description: 1,
+          body: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          media: 1,
+          ward_number: 1,
+          status: 1,
+          shares: 1,
+          upvotes: 1,
+          downvotes: 1,
+          commentsCount: 1,
+          author: { name: "$author.name", role: "$author.role", _id: "$author._id" },
+          user: { name: "$author.name", role: "$author.role", _id: "$author._id" },
+        },
+      },
+    ];
+
+    const [updates, total] = await Promise.all([GovPost.aggregate(pipeline), GovPost.countDocuments({ postType: "update" })]);
 
     return res.status(200).json({ success: true, Reports: updates, hasMore: skip + updates.length < total });
   } catch (err) {
@@ -76,14 +114,50 @@ const getGovAlerts = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const authorFilter = req.user?._id ? { authorId: req.user._id } : {};
-    const [alerts, total] = await Promise.all([
-      GovPost.find({ postType: "alert", ...authorFilter })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .populate("authorId", "name role"),
-      GovPost.countDocuments({ postType: "alert", ...authorFilter }),
-    ]);
+    // aggregation to trim alerts
+    const pipeline = [
+      { $match: { postType: "alert", ...authorFilter } },
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $project: {
+          title: 1,
+          description: 1,
+          body: "$description",
+          createdAt: 1,
+          media: 1,
+          authorId: 1,
+          ward_number: 1,
+          status: 1,
+          shares: 1,
+          upvotes: 1,
+          downvotes: 1,
+          commentsCount: { $size: { $ifNull: ["$comments", []] } },
+        },
+      },
+      { $lookup: { from: "users", localField: "authorId", foreignField: "_id", as: "author" } },
+      { $unwind: { path: "$author", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          title: 1,
+          description: 1,
+          body: 1,
+          createdAt: 1,
+          media: 1,
+          ward_number: 1,
+          status: 1,
+          shares: 1,
+          upvotes: 1,
+          downvotes: 1,
+          commentsCount: 1,
+          author: { name: "$author.name", role: "$author.role", _id: "$author._id" },
+          user: { name: "$author.name", role: "$author.role", _id: "$author._id" },
+        },
+      },
+    ];
+
+    const [alerts, total] = await Promise.all([GovPost.aggregate(pipeline), GovPost.countDocuments({ postType: "alert", ...authorFilter })]);
 
     return res.status(200).json({ success: true, reports: alerts, hasMore: skip + alerts.length < total });
   } catch (err) {

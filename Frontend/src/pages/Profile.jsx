@@ -31,6 +31,7 @@ export default function Profile() {
     );
   }
   const [issues, setIssues] = useState([]);
+  const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -64,11 +65,15 @@ export default function Profile() {
     const getReport = async () => {
       try {
         const response = await axios.post(
-          `${import.meta.env.VITE_BACKEND_URL}/api/report/getMy`,
+          `${import.meta.env.VITE_BACKEND_URL}/api/report/getMy?recent=1`,
           { token },
         );
-        if (response.status === 200 && response.data.Reports)
-          setIssues(response.data.Reports);
+        if (response.status === 200) {
+          if (response.data.reports) setIssues(response.data.reports);
+          else if (response.data.Reports) setIssues(response.data.Reports);
+          else if (response.data.recent) setIssues(response.data.recent);
+          if (response.data.summary) setSummary(response.data.summary);
+        }
       } catch (err) {
         console.error(err);
       }
@@ -93,7 +98,20 @@ export default function Profile() {
       );
 
       if (res.status === 200 && res.data.success) {
-        if (!hasUpvoted) {
+        const nextUser = res.data.user || null;
+        const nextResource = res.data.resource || null;
+
+        if (nextUser) {
+          setUser((prev) => ({ ...(prev || {}), ...nextUser }));
+        }
+
+        if (nextResource) {
+          updateIssueInState(e, (issue) => ({
+            ...issue,
+            upvotes: nextResource.upvotes || [],
+            downvotes: nextResource.downvotes || [],
+          }));
+        } else if (!hasUpvoted) {
           setUser((prev) => ({
             ...prev,
             upvotes: [...prev.upvotes, e],
@@ -129,7 +147,20 @@ export default function Profile() {
       );
 
       if (res.status === 200 && res.data.success) {
-        if (!hasDownvoted) {
+        const nextUser = res.data.user || null;
+        const nextResource = res.data.resource || null;
+
+        if (nextUser) {
+          setUser((prev) => ({ ...(prev || {}), ...nextUser }));
+        }
+
+        if (nextResource) {
+          updateIssueInState(e, (issue) => ({
+            ...issue,
+            upvotes: nextResource.upvotes || [],
+            downvotes: nextResource.downvotes || [],
+          }));
+        } else if (!hasDownvoted) {
           setUser((prev) => ({
             ...prev,
             downvotes: [...prev.downvotes, e],
@@ -181,9 +212,11 @@ export default function Profile() {
     setLoading(false);
   };
 
-  const totalReports = issues.length || 1;
-  const totalUpvotes = issues.reduce((sum, i) => sum + i.upvotes.length, 0);
-  const totalDownvotes = issues.reduce((sum, i) => sum + i.downvotes.length, 0);
+  const totalReports = summary?.totalReports ?? user.reports?.length ?? issues.length ?? 0;
+  const totalUpvotes = summary?.upvotes ?? issues.reduce((sum, i) => sum + (Array.isArray(i.upvotes) ? i.upvotes.length : i.upvotesCount || 0), 0);
+  const totalDownvotes = summary?.downvotes ?? issues.reduce((sum, i) => sum + (Array.isArray(i.downvotes) ? i.downvotes.length : i.downvotesCount || 0), 0);
+  const displayName = (user?.name || "").trim() || (user?.phone_number ? `User ${user.phone_number.slice(-4)}` : "User");
+  const displayInitial = displayName.charAt(0).toUpperCase();
 
   const formattedDate = (date) =>
     new Date(date).toLocaleDateString("en-US", {
@@ -200,13 +233,13 @@ export default function Profile() {
       <div className=" pb-6">
         <div className="flex justify-between items-end -mt-12 mb-4">
           <div className="x-avatar x-avatar-lg w-24 h-24 text-3xl border-4 border-x-bg">
-            {user.name?.charAt(0)?.toUpperCase()}
+            {displayInitial}
           </div>
         </div>
 
-        <h1 className="text-xl font-bold">{user.name}</h1>
+        <h1 className="text-xl font-bold">{displayName}</h1>
         <p className="text-x-text-secondary text-sm">
-          +977 {user.phone_number}
+          {user.phone_number ? `+977 ${user.phone_number}` : "No phone number"}
         </p>
 
         <div className="flex items-center gap-2 mt-2">
@@ -222,9 +255,9 @@ export default function Profile() {
 
         {/* Stats row — X style */}
         <div className="flex gap-5 mt-4 text-sm">
-          <StatInline label="Reports" value={user.reports?.length || 0} />
-          <StatInline label="Upvotes" value={user.upvotes.length} />
-          <StatInline label="Downvotes" value={user.downvotes.length} />
+          <StatInline label="Reports" value={totalReports} />
+          <StatInline label="Upvotes" value={totalUpvotes} />
+          <StatInline label="Downvotes" value={totalDownvotes} />
         </div>
 
         <div className="mt-6 space-y-3">

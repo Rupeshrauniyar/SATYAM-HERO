@@ -208,7 +208,7 @@ export default function CreateIssue() {
                     <button
                       type="button"
                       onClick={() => removeImage(index)}
-                      className="absolute -top-1.5 -right-1.5 bg-x-primary text-white rounded-full p-1"
+                      className="absolute -top-1.5 -right-1.5 bg-x-primary text-x-text-on-primary rounded-full p-1"
                     >
                       <X size={12} />
                     </button>

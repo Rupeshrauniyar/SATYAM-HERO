@@ -19,6 +19,7 @@ import Create from "./pages/Create";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
+import Privacy from "./pages/Privacy";
 import Search from "./pages/Search";
 import Insights from "./pages/Insights";
 
@@ -50,6 +51,7 @@ const App = () => {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/settings" element={<Settings />} />
+              {/* <Route path="/privacy" element={<PrivacyPolicy />} /> */}
               <Route path="/search" element={<Search />} />
               <Route path="/alerts" element={<Alerts />} />
               <Route path="/notifications" element={<Notifications />} />
@@ -77,6 +79,8 @@ const App = () => {
           <Route element={<PublicLayout />}>
               <Route path="/landing" element={<Landing />} />
             <Route path="/signin" element={<Signinv2 />} />
+            <Route path="/privacy" element={< Privacy/>} />
+
             <Route element={<UnverifiedMiddleware />}>
               <Route path="/signup" element={<Signup />} />
             </Route>
