@@ -18,6 +18,25 @@ const createNotification = async ({ userId, reportId, sourceUserId, type, messag
   return Notification.create(doc);
 };
 
+const getResourceModel = (resourceType = "report") => {
+  return resourceType === "govPost" ? GovPost : Report;
+};
+
+const getOwnerId = (resource) => {
+  return resource?.authorId || resource?.userId;
+};
+
+const normalizeComments = (comments = [], includeReplies = false) => {
+  return comments.map((comment) => {
+    const doc = comment.toObject ? comment.toObject() : comment;
+    return {
+      ...doc,
+      replyCount: doc.replies?.length || 0,
+      replies: includeReplies ? doc.replies || [] : [],
+    };
+  });
+};
+
 const createReport = async (req, res) => {
   try {
     if (req.user.role === "gov") {
@@ -55,10 +74,20 @@ const createReport = async (req, res) => {
 };
 const getReport = async (req, res) => {
   try {
-    const Reports = await Report.find()
-      .sort({ createdAt: -1 })
-      .populate(reportPopulate);
-    res.status(200).json({ Reports });
+    const page = Math.max(1, parseInt(req.query.page || "1", 10));
+    const limit = Math.min(20, Math.max(1, parseInt(req.query.limit || "3", 10)));
+    const skip = (page - 1) * limit;
+
+    const [Reports, total] = await Promise.all([
+      Report.find()
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate(reportPopulate),
+      Report.countDocuments(),
+    ]);
+
+    res.status(200).json({ success: true, Reports, hasMore: skip + Reports.length < total });
   } catch (err) {
     console.log(err);
     res.status(404).json({ success: false });
@@ -87,11 +116,20 @@ const getReportById = async (req, res) => {
 
 const getAuthorityReports = async (req, res) => {
   try {
-    const updates = await GovPost.find({ postType: "update" })
-      .sort({ updatedAt: -1 })
-      .populate(govPostPopulate);
+    const page = Math.max(1, parseInt(req.query.page || "1", 10));
+    const limit = Math.min(20, Math.max(1, parseInt(req.query.limit || "3", 10)));
+    const skip = (page - 1) * limit;
 
-    res.status(200).json({ Reports: updates });
+    const [updates, total] = await Promise.all([
+      GovPost.find({ postType: "update" })
+        .sort({ updatedAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate(govPostPopulate),
+      GovPost.countDocuments({ postType: "update" }),
+    ]);
+
+    res.status(200).json({ success: true, Reports: updates, hasMore: skip + updates.length < total });
   } catch (err) {
     console.log(err);
     res.status(500).json({ success: false });
@@ -100,11 +138,20 @@ const getAuthorityReports = async (req, res) => {
 
 const getAlerts = async (req, res) => {
   try {
-    const alerts = await GovPost.find({ postType: "alert" })
-      .sort({ createdAt: -1 })
-      .populate(govPostPopulate);
+    const page = Math.max(1, parseInt(req.query.page || "1", 10));
+    const limit = Math.min(20, Math.max(1, parseInt(req.query.limit || "3", 10)));
+    const skip = (page - 1) * limit;
 
-    res.status(200).json({ success: true, reports: alerts });
+    const [alerts, total] = await Promise.all([
+      GovPost.find({ postType: "alert" })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate(govPostPopulate),
+      GovPost.countDocuments({ postType: "alert" }),
+    ]);
+
+    res.status(200).json({ success: true, reports: alerts, hasMore: skip + alerts.length < total });
   } catch (err) {
     console.log(err);
     res.status(500).json({ success: false });
@@ -114,17 +161,46 @@ const getAlerts = async (req, res) => {
 const getComments = async (req, res) => {
   try {
     const { reportId } = req.params;
-    const report = await Report.findById(reportId).populate({
-      path: "comments.userId",
-      select: "name -_id",
-    });
-    if (report) await report.populate({ path: "comments.replies.userId", select: "name -_id" });
+    const { resourceType, includeReplies } = req.query;
+    const Model = getResourceModel(resourceType);
+    const resource = await Model.findById(reportId);
 
-    if (!report) {
+    if (!resource) {
       return res.status(404).json({ success: false, message: "Report not found" });
     }
 
-    res.status(200).json({ success: true, comments: report.comments });
+    await resource.populate({ path: "comments.userId", select: "name -_id" });
+    if (includeReplies === "true" || includeReplies === "1") {
+      await resource.populate({ path: "comments.replies.userId", select: "name -_id" });
+    }
+
+    res.status(200).json({ success: true, comments: normalizeComments(resource.comments, includeReplies === "true" || includeReplies === "1") });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false });
+  }
+};
+
+const getCommentReplies = async (req, res) => {
+  try {
+    const { reportId, commentId } = req.params;
+    const { resourceType } = req.query;
+    const Model = getResourceModel(resourceType);
+    const resource = await Model.findById(reportId);
+
+    if (!resource) {
+      return res.status(404).json({ success: false, message: "Report not found" });
+    }
+
+    const comment = resource.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({ success: false, message: "Comment not found" });
+    }
+
+    await resource.populate({ path: "comments.replies.userId", select: "name -_id" });
+    const updatedComment = resource.comments.id(commentId);
+
+    res.status(200).json({ success: true, replies: updatedComment.replies || [] });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false });
@@ -133,14 +209,15 @@ const getComments = async (req, res) => {
 
 const addComment = async (req, res) => {
   try {
-    const { reportId, text } = req.body;
+    const { reportId, text, resourceType = "report" } = req.body;
     const userId = req.user._id;
 
     if (!reportId || !text?.trim()) {
       return res.status(400).json({ success: false, message: "Missing data" });
     }
 
-    const report = await Report.findByIdAndUpdate(
+    const Model = getResourceModel(resourceType);
+    const resource = await Model.findByIdAndUpdate(
       reportId,
       {
         $push: {
@@ -156,16 +233,17 @@ const addComment = async (req, res) => {
       select: "name -_id",
     });
 
-    if (!report) {
+    if (!resource) {
       return res.status(404).json({ success: false, message: "Report not found" });
     }
 
-    const newComment = report.comments[report.comments.length - 1];
+    const newComment = resource.comments[resource.comments.length - 1];
     const sourceUser = await User.findById(userId).select("name");
+    const ownerId = getOwnerId(resource);
 
-    if (report.userId.toString() !== userId.toString()) {
+    if (ownerId && ownerId.toString() !== userId.toString()) {
       await createNotification({
-        userId: report.userId,
+        userId: ownerId,
         reportId,
         sourceUserId: userId,
         type: "comment",
@@ -173,7 +251,7 @@ const addComment = async (req, res) => {
       });
     }
 
-    res.status(200).json({ success: true, comment: newComment });
+    res.status(200).json({ success: true, comment: { ...newComment.toObject(), replyCount: 0, replies: [] } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false });
@@ -235,7 +313,7 @@ const trackShare = async (req, res) => {
 
 const likeComment = async (req, res) => {
   try {
-    const { reportId, commentId, method } = req.body;
+    const { reportId, commentId, method, resourceType = "report" } = req.body;
     const userId = req.user._id;
 
     if (!reportId || !commentId || !method) {
@@ -246,12 +324,13 @@ const likeComment = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid method" });
     }
 
-    const report = await Report.findById(reportId);
-    if (!report) {
+    const Model = getResourceModel(resourceType);
+    const resource = await Model.findById(reportId);
+    if (!resource) {
       return res.status(404).json({ success: false, message: "Report not found" });
     }
 
-    const comment = report.comments.id(commentId);
+    const comment = resource.comments.id(commentId);
     if (!comment) {
       return res.status(404).json({ success: false, message: "Comment not found" });
     }
@@ -259,7 +338,6 @@ const likeComment = async (req, res) => {
     if (method === "push") {
       const already = comment.likes.some((id) => id.toString() === userId.toString());
       if (!already) comment.likes.push(userId);
-      // notify comment owner
       try {
         const sourceUser = await User.findById(userId).select("name");
         if (comment.userId.toString() !== userId.toString()) {
@@ -276,15 +354,13 @@ const likeComment = async (req, res) => {
         console.error("notify comment like error", e);
       }
     } else {
-      comment.likes = comment.likes.filter(
-        (id) => id.toString() !== userId.toString(),
-      );
+      comment.likes = comment.likes.filter((id) => id.toString() !== userId.toString());
     }
 
-    await report.save();
-    await report.populate({ path: "comments.userId", select: "name -_id" });
+    await resource.save();
+    await resource.populate({ path: "comments.userId", select: "name -_id" });
 
-    const updated = report.comments.id(commentId);
+    const updated = resource.comments.id(commentId);
     res.status(200).json({ success: true, comment: updated });
   } catch (err) {
     console.error(err);
@@ -294,30 +370,30 @@ const likeComment = async (req, res) => {
 
 const addReply = async (req, res) => {
   try {
-    const { reportId, commentId, text } = req.body;
+    const { reportId, commentId, text, resourceType = "report" } = req.body;
     const userId = req.user._id;
 
     if (!reportId || !commentId || !text?.trim()) {
       return res.status(400).json({ success: false, message: "Missing data" });
     }
 
-    const report = await Report.findById(reportId);
-    if (!report) {
+    const Model = getResourceModel(resourceType);
+    const resource = await Model.findById(reportId);
+    if (!resource) {
       return res.status(404).json({ success: false, message: "Report not found" });
     }
 
-    const comment = report.comments.id(commentId);
+    const comment = resource.comments.id(commentId);
     if (!comment) {
       return res.status(404).json({ success: false, message: "Comment not found" });
     }
 
     comment.replies.push({ userId, text: text.trim() });
-    await report.save();
+    await resource.save();
 
-    // populate comment and reply users
-    await report.populate({ path: "comments.userId", select: "name -_id" });
-    await report.populate({ path: "comments.replies.userId", select: "name -_id" });
-    const updatedComment = report.comments.id(commentId);
+    await resource.populate({ path: "comments.userId", select: "name -_id" });
+    await resource.populate({ path: "comments.replies.userId", select: "name -_id" });
+    const updatedComment = resource.comments.id(commentId);
     const newReply = updatedComment.replies[updatedComment.replies.length - 1];
 
     const sourceUser = await User.findById(userId).select("name");
@@ -344,7 +420,7 @@ const addReply = async (req, res) => {
 };
 const upvoteReport = async (req, res) => {
   try {
-    const { reportId, method } = req.body;
+    const { reportId, method, resourceType = "report" } = req.body;
     const userId = req.user._id;
 
     if (!reportId || !method) {
@@ -352,21 +428,20 @@ const upvoteReport = async (req, res) => {
     }
 
     if (!["push", "pull"].includes(method)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid method" });
+      return res.status(400).json({ success: false, message: "Invalid method" });
     }
 
-    const report = await Report.findById(reportId);
+    const Model = getResourceModel(resourceType);
+    const resource = await Model.findById(reportId);
     const user = await User.findById(userId);
 
-    if (!report || !user) {
+    if (!resource || !user) {
       return res.status(404).json({ success: false, message: "Not found" });
     }
 
     if (method === "push") {
       await Promise.all([
-        Report.findByIdAndUpdate(reportId, {
+        Model.findByIdAndUpdate(reportId, {
           $pull: { downvotes: userId },
           $addToSet: { upvotes: userId },
         }),
@@ -377,9 +452,10 @@ const upvoteReport = async (req, res) => {
       ]);
 
       const sourceUser = await User.findById(userId).select("name");
-      if (report.userId.toString() !== userId.toString()) {
+      const ownerId = getOwnerId(resource);
+      if (ownerId && ownerId.toString() !== userId.toString()) {
         await createNotification({
-          userId: report.userId,
+          userId: ownerId,
           reportId,
           sourceUserId: userId,
           type: "upvote",
@@ -390,7 +466,7 @@ const upvoteReport = async (req, res) => {
 
     if (method === "pull") {
       await Promise.all([
-        Report.findByIdAndUpdate(reportId, {
+        Model.findByIdAndUpdate(reportId, {
           $pull: { upvotes: userId },
         }),
         User.findByIdAndUpdate(userId, {
@@ -417,7 +493,7 @@ const getMyReport = async (req, res) => {
 };
 const downvoteReport = async (req, res) => {
   try {
-    const { reportId, method } = req.body;
+    const { reportId, method, resourceType = "report" } = req.body;
     const userId = req.user._id;
 
     if (!reportId || !method) {
@@ -425,21 +501,20 @@ const downvoteReport = async (req, res) => {
     }
 
     if (!["push", "pull"].includes(method)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid method" });
+      return res.status(400).json({ success: false, message: "Invalid method" });
     }
 
-    const report = await Report.findById(reportId);
+    const Model = getResourceModel(resourceType);
+    const resource = await Model.findById(reportId);
     const user = await User.findById(userId);
 
-    if (!report || !user) {
+    if (!resource || !user) {
       return res.status(404).json({ success: false, message: "Not found" });
     }
 
     if (method === "push") {
       await Promise.all([
-        Report.findByIdAndUpdate(reportId, {
+        Model.findByIdAndUpdate(reportId, {
           $pull: { upvotes: userId },
           $addToSet: { downvotes: userId },
         }),
@@ -450,9 +525,10 @@ const downvoteReport = async (req, res) => {
       ]);
 
       const sourceUser = await User.findById(userId).select("name");
-      if (report.userId.toString() !== userId.toString()) {
+      const ownerId = getOwnerId(resource);
+      if (ownerId && ownerId.toString() !== userId.toString()) {
         await createNotification({
-          userId: report.userId,
+          userId: ownerId,
           reportId,
           sourceUserId: userId,
           type: "downvote",
@@ -463,7 +539,7 @@ const downvoteReport = async (req, res) => {
 
     if (method === "pull") {
       await Promise.all([
-        Report.findByIdAndUpdate(reportId, {
+        Model.findByIdAndUpdate(reportId, {
           $pull: { downvotes: userId },
         }),
         User.findByIdAndUpdate(userId, {
@@ -527,6 +603,7 @@ module.exports = {
   getAlerts,
   searchReports,
   getComments,
+  getCommentReplies,
   addComment,
   likeComment,
   addReply,

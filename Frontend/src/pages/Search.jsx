@@ -6,7 +6,7 @@ import { Loader2, MessageCircle, Search as SearchIcon } from "lucide-react";
 import ReportFeedItem from "../components/ReportFeedItem";
 import { useTranslation } from "../utils/translations";
 
-const Search = () => {
+const Search = ({ basePath = "/search", heading = null, intro = null, action = null }) => {
   const [searchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
   const { user } = useContext(AppContext);
@@ -167,7 +167,7 @@ const Search = () => {
   const handleSearchSubmit = (event) => {
     event.preventDefault();
     if (!searchInput.trim()) return;
-    navigate(`/search?q=${encodeURIComponent(searchInput.trim())}`);
+    navigate(`${basePath}?q=${encodeURIComponent(searchInput.trim())}`);
   };
 
   const feedProps = {
@@ -188,21 +188,22 @@ const Search = () => {
   return (
     <div className="x-feed-column">
       <div className="x-page-header space-y-4">
-        <div>
-          <h1>{t("searchResults")}</h1>
+        <div className="flex-1">
+          <h1>{heading || t("searchResults")}</h1>
           <p className="text-sm text-gray-500 mt-1">
             {query
-              ? t("showingResults", { query })
+              ? intro || t("showingResults", { query })
               : t("enterSearchTerm")}
           </p>
         </div>
+        {action && <div className="flex-shrink-0">{action}</div>}
         <form onSubmit={handleSearchSubmit} className="relative w-full max-w-xl">
           <SearchIcon size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
             placeholder={t("search")}
-            className="w-full rounded-full border border-gray-200 bg-white py-3 pl-10 pr-4 outline-none focus:border-black"
+            className="w-full rounded-full border border-x-border bg-x-bg py-3 pl-10 pr-4 outline-none focus:border-x-accent"
           />
         </form>
       </div>

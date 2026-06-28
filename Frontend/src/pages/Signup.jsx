@@ -33,11 +33,11 @@ const PhoneAuth = () => {
     <div className="min-h-screen flex items-center justify-center ">
       <div className="w-screen max-w-xl px-2 ">
         <span className="flex flex-col items-center justify-center text-center">
-          <h2 className="text-3xl font-bold text-center ">
+          <h2 className="text-3xl font-bold text-center text-x-text">
             Enter your details
           </h2>
           {/* <p></p> */}
-          <p className="text-gray-500 text-sm mb-2">
+          <p className="text-x-text-secondary text-sm mb-2">
             We will use this information to create your account
           </p>
         </span>

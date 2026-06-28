@@ -35,11 +35,20 @@ const createGovPost = async (req, res) => {
 
 const getGovUpdates = async (req, res) => {
   try {
-    const updates = await GovPost.find({ postType: "update" })
-      .sort({ updatedAt: -1 })
-      .populate("authorId", "name role -_id");
+    const page = Math.max(1, parseInt(req.query.page || "1", 10));
+    const limit = Math.min(20, Math.max(1, parseInt(req.query.limit || "3", 10)));
+    const skip = (page - 1) * limit;
 
-    return res.status(200).json({ success: true, Reports: updates });
+    const [updates, total] = await Promise.all([
+      GovPost.find({ postType: "update" })
+        .sort({ updatedAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("authorId", "name role -_id"),
+      GovPost.countDocuments({ postType: "update" }),
+    ]);
+
+    return res.status(200).json({ success: true, Reports: updates, hasMore: skip + updates.length < total });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false, message: "Server error" });
@@ -48,11 +57,20 @@ const getGovUpdates = async (req, res) => {
 
 const getGovAlerts = async (req, res) => {
   try {
-    const alerts = await GovPost.find({ postType: "alert" })
-      .sort({ createdAt: -1 })
-      .populate("authorId", "name role -_id");
+    const page = Math.max(1, parseInt(req.query.page || "1", 10));
+    const limit = Math.min(20, Math.max(1, parseInt(req.query.limit || "3", 10)));
+    const skip = (page - 1) * limit;
 
-    return res.status(200).json({ success: true, reports: alerts });
+    const [alerts, total] = await Promise.all([
+      GovPost.find({ postType: "alert" })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("authorId", "name role -_id"),
+      GovPost.countDocuments({ postType: "alert" }),
+    ]);
+
+    return res.status(200).json({ success: true, reports: alerts, hasMore: skip + alerts.length < total });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false, message: "Server error" });

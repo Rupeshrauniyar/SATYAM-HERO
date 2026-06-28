@@ -41,7 +41,7 @@ function SidebarLink({ to, icon: Icon, label }) {
       className={({ isActive }) =>
         `flex items-center gap-4 px-4 py-3 rounded-full text-[1.0625rem] transition-colors ${
           isActive
-            ? "font-bold text-x-text bg-x-bg-hover"
+            ? "font-bold text-x-text bg-x-bg-elevated"
             : "font-normal text-x-text hover:bg-x-bg-hover"
         }`
       }
@@ -62,8 +62,8 @@ function MobileNavLink({ to, icon: Icon }) {
       to={to}
       end={to === "/" || to === "/gov"}
       className={({ isActive }) =>
-        `flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
-          isActive ? "text-x-text" : "text-x-text-secondary"
+        `flex flex-col items-center justify-center flex-1 py-1 rounded-xl transition-colors ${
+          isActive ? "text-x-text bg-x-bg-elevated" : "text-x-text-secondary hover:bg-x-bg-hover"
         }`
       }
     >
@@ -86,7 +86,7 @@ export default function AppShell({ children }) {
         { to: "/gov/dashboard", icon: LayoutDashboard, label: t("dashboard") },
         { to: "/gov/create", icon: PlusSquare, label: t("create") },
         { to: "/gov/search", icon: Search, label: t("search") },
-        { to: "/alerts", icon: Siren, label: t("alerts") },
+        // { to: "/alerts", icon: Siren, label: t("alerts") },
         { to: "/gov/profile", icon: User2, label: t("profile") },
       ]
     : [
@@ -110,8 +110,8 @@ export default function AppShell({ children }) {
   return (
     <div className="min-h-screen bg-x-bg text-x-text">
       <header
-        className="fixed top-0 inset-x-0 z-50 bg-x-bg/92 backdrop-blur-xl border-b border-x-border"
-        style={{ height: "var(--topbar-h)" }}
+        className="fixed top-0 inset-x-0 z-50 border-b border-x-border shadow-sm"
+style={{ height: "var(--topbar-h)", background: "var(--color-x-bg)" }}
       >
         <div className="max-w-[1280px] mx-auto h-full px-4 flex items-center justify-between">
           <Link
@@ -122,33 +122,37 @@ export default function AppShell({ children }) {
               <Feather size={16} className="text-white" strokeWidth={2.5} />
             </div>
             <span className="text-xl font-bold tracking-tight hidden sm:block">
-              CivicReport
+              {isGov ? "CivicReport Gov" : "CivicReport"}
             </span>
+               <span className="text-xl font-bold tracking-tight sm:hidden block">
+              {isGov ? "Gov" : "CR"}
+            </span>
+
           </Link>
 
-          <form onSubmit={handleSearchSubmit} className="hidden sm:flex items-center gap-2 border border-x-border rounded-full px-3 py-1 bg-white">
+          {/* <form onSubmit={handleSearchSubmit} className="hidden sm:flex items-center gap-2 border border-x-border rounded-full px-3 py-1 bg-white">
             <Search size={18} className="text-x-text-secondary" />
             <input
               value={searchValue}
               onChange={(event) => setSearchValue(event.target.value)}
               placeholder={searchPlaceholder}
-              className="bg-transparent outline-none text-sm min-w-[160px]"
+              className="bg-transparent outline-none text-sm min-w-[360px]"
             />
-          </form>
+          </form> */}
 
           <div className="flex items-center gap-3">
             <button
               onClick={toggleLanguage}
               type="button"
-              className="hidden sm:inline-flex items-center gap-2 rounded-full border border-x-border px-3 py-2 text-sm"
+              className="inline-flex items-center gap-2 rounded-full border border-x-border bg-x-bg-secondary px-3 py-2 text-sm text-x-text"
             >
               <Globe size={16} />
               {language === "en" ? t("nepali") : t("english")}
             </button>
 
             <Link
-              to="/notifications"
-              className="relative inline-flex items-center justify-center p-2 rounded-full hover:bg-x-bg-hover transition-colors"
+              to={isGov ? "/gov/notifications" : "/notifications"}
+              className="relative inline-flex items-center justify-center p-2 rounded-full border border-x-border bg-x-bg-secondary text-x-text hover:bg-x-bg-hover transition-colors"
             >
               <Bell size={20} />
               <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
@@ -156,12 +160,12 @@ export default function AppShell({ children }) {
 
             <Link
               to={isGov ? "/gov/settings" : "/settings"}
-              className="inline-flex items-center justify-center p-2 rounded-full hover:bg-x-bg-hover transition-colors"
+              className="inline-flex items-center justify-center p-2 rounded-full border border-x-border bg-x-bg-secondary text-x-text hover:bg-x-bg-hover transition-colors"
             >
               <Settings size={20} />
             </Link>
 
-            {user ? (
+            {/* {user ? (
               <Link
                 to={isGov ? "/gov/profile" : "/profile"}
                 className="flex items-center gap-2 hover:bg-x-bg-hover rounded-full pl-1 pr-3 py-1 transition-colors"
@@ -177,7 +181,7 @@ export default function AppShell({ children }) {
               <Link to="/signin" className="x-btn x-btn-primary x-btn-sm">
                 Sign in
               </Link>
-            )}
+            )} */}
           </div>
         </div>
       </header>
@@ -190,7 +194,7 @@ export default function AppShell({ children }) {
         }}
       >
         <aside
-          className="hidden lg:flex flex-col px-3 py-4 sticky"
+          className="hidden lg:flex flex-col px-3 py-4 sticky bg-x-bg border-r border-x-border"
           style={{
             top: "var(--topbar-h)",
             height: "calc(100vh - var(--topbar-h))",
@@ -217,7 +221,7 @@ export default function AppShell({ children }) {
         </main>
 
         <aside
-          className="hidden xl:block px-4 py-4 sticky"
+          className="hidden xl:block px-4 py-4 sticky bg-x-bg border-l border-x-border"
           style={{
             top: "var(--topbar-h)",
             height: "calc(100vh - var(--topbar-h))",
@@ -274,7 +278,8 @@ export default function AppShell({ children }) {
         </aside>
       </div>
 
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-x-bg/92 backdrop-blur-xl border-t border-x-border h-14">
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-x-border h-14 shadow-[0_-8px_24px_rgba(0,0,0,0.08)]"
+style={{ background: "var(--color-x-bg)" }}>
         <div className="flex items-center justify-around h-full max-w-lg mx-auto ">
           {navItems.slice(0, 5).map((item) => (
             <MobileNavLink key={item.to} {...item} />

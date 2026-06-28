@@ -5,6 +5,7 @@ const {
   getReportById,
   searchReports,
   getComments,
+  getCommentReplies,
   addComment,
   addReply,
   likeComment,
@@ -27,6 +28,7 @@ router.get("/get", getReport);
 router.get("/search", searchReports);
 router.get("/single/:reportId", getReportById);
 router.get("/comments/:reportId", getComments);
+router.get("/comments/:reportId/replies/:commentId", getCommentReplies);
 router.post("/comment", UserMiddleware, addComment);
 router.post("/comment/reply", UserMiddleware, addReply);
 router.post("/comment/like", UserMiddleware, likeComment);

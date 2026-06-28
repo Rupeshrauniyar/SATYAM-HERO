@@ -19,8 +19,8 @@ const Navbar = () => {
       <NavLink
         to={to}
         className={({ isActive }) =>
-          `flex flex-col items-center gap-1 text-xs transition ${
-            isActive ? "text-black font-semibold" : "text-gray-500"
+          `flex flex-col items-center gap-1 rounded-full px-2 py-2 text-xs transition ${
+            isActive ? "bg-x-bg-hover text-x-text font-semibold" : "text-x-text-secondary hover:bg-x-bg-hover"
           }`
         }
       >
@@ -37,8 +37,8 @@ const Navbar = () => {
           `flex items-center gap-3 w-full px-4 py-3 rounded-xl transition-all 
          ${
            isActive
-             ? "bg-black text-white shadow-md"
-             : "bg-transparent text-gray-700 hover:bg-gray-100"
+             ? "bg-x-accent text-white shadow-sm"
+             : "bg-x-bg-secondary text-x-text hover:bg-x-bg-hover"
          }`
         }
       >
@@ -49,12 +49,12 @@ const Navbar = () => {
   };
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-[999] bg-white border-b border-gray-200">
+      <header className="fixed top-0 left-0 right-0 z-[999] bg-x-bg border-b border-x-border shadow-sm">
         <div className="mx-auto h-16 px-4 flex items-center justify-between">
           {/* Brand */}
           <Link
             to="/"
-            className="text-xl font-semibold text-gray-900 hover:text-gray-700"
+            className="rounded-full px-2 py-1 text-xl font-semibold text-x-text hover:bg-x-bg-hover"
           >
             CivicReport
           </Link>
@@ -63,7 +63,7 @@ const Navbar = () => {
           <nav className="flex items-center gap-6">
             {user ? (
               <div className="flex items-center">
-                <span className="text-sm text-gray-600 bg-gray-200  rounded-full p-1">
+                <span className="text-sm text-x-text-secondary bg-x-bg-hover rounded-full p-1">
                   <User2 size={20} className=" text-zinc-700 " />
                 </span>
                 <p className="ml-1">{user?.name?.split(" ")[0]}</p>
@@ -72,7 +72,7 @@ const Navbar = () => {
               <>
                 <Link
                   to="/signin"
-                  className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-xl hover:bg-gray-800"
+                  className="px-4 py-2 text-sm font-medium text-white bg-x-primary rounded-xl hover:opacity-90"
                 >
                   Sign in
                 </Link>
@@ -81,7 +81,7 @@ const Navbar = () => {
           </nav>
         </div>
       </header>
-      <footer className="fixed xl:hidden visible bottom-[-2px] left-0 z-[999]  bg-white w-full h-15 px-3 shadow-3xl border-t-2 border-zinc-100">
+      <footer className="fixed xl:hidden visible bottom-[-2px] left-0 z-[999] bg-x-bg w-full h-15 px-3 shadow-3xl border-t-2 border-x-border">
         <div className=" flex items-center justify-between w-full h-full mb-10">
           <NavItem to="/" icon={Home} label="Home" />
           <NavItem to="/dashboard" icon={LayoutDashboard} label="Dashboard" />
@@ -90,7 +90,7 @@ const Navbar = () => {
           <NavItem to="/settings" icon={Menu} label="Settings" />
         </div>
       </footer>
-      <div className="fixed  xl:flex hidden left-0 z-[999]  bg-gray-100/50 border-1 border-gray-200 shadow-xl w-[20%] h-screen p-3 shadow-3xl border-t-2 border-zinc-100">
+      <div className="fixed xl:flex hidden left-0 z-[999] bg-x-bg-secondary border border-x-border shadow-xl w-[20%] h-screen p-3 shadow-3xl">
         <div className=" flex flex-col items-center justify-start w-full h-full mb-10">
           <NavItem2 to="/" icon={Home} label="Home" className="flex" />
           <NavItem2 to="/dashboard" icon={LayoutDashboard} label="Dashboard" />

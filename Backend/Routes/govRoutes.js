@@ -4,6 +4,7 @@ const UserMiddleware = require("../Middlewares/UserMiddleware.js");
 
 const router = express.Router();
 
+router.get("/user", UserMiddleware, getUsers);
 router.post("/user", UserMiddleware, getUsers);
 router.post("/user/update", UserMiddleware, updateUserRole);
 

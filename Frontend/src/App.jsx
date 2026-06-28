@@ -22,6 +22,7 @@ import Search from "./pages/Search";
 // gov pages
 import GovHome from "./pages_gov/GovHome";
 import GovSearch from "./pages_gov/GovSearch";
+import GovUsers from "./pages_gov/GovUsers";
 import GovCreate from "./pages_gov/GovCreate";
 import GovDashboard from "./pages_gov/GovDashboard";
 import GovProfile from "./pages_gov/GovProfile";
@@ -57,12 +58,13 @@ const App = () => {
             <Route element={<AppLayout />}>
               <Route path="/gov" element={<GovHome />} />
               <Route path="/gov/search" element={<GovSearch />} />
+              <Route path="/gov/users" element={<GovUsers />} />
               <Route path="/gov/create" element={<GovCreate />} />
               <Route path="/gov/dashboard" element={<GovDashboard />} />
               <Route path="/gov/profile" element={<GovProfile />} />
               <Route path="/gov/settings" element={<GovSettings />} />
-              <Route path="/alerts" element={<Alerts />} />
-              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/gov/alerts" element={<Alerts />} />
+              <Route path="/gov/notifications" element={<Notifications />} />
             </Route>
           </Route>
 

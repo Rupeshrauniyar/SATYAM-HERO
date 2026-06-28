@@ -41,6 +41,9 @@ const Home = () => {
   const [issues, setIssues] = useState([]);
   const [pinnedReport, setPinnedReport] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState({});
   const [selectedStatus, setSelectedStatus] = useState(null);
   const [confirmIssue, setConfirmIssue] = useState(null);
@@ -78,6 +81,8 @@ const Home = () => {
   useEffect(() => {
     const fetchReports = async () => {
       setLoading(true);
+      setPage(1);
+      setHasMore(true);
       try {
         const endpoint =
           feedTab === FEED_TABS.PUBLIC
@@ -85,7 +90,7 @@ const Home = () => {
             : "/api/gov/post/updates";
 
         const response = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}${endpoint}`,
+          `${import.meta.env.VITE_BACKEND_URL}${endpoint}?page=1&limit=3`,
         );
 
         let reports = response.data.Reports || [];
@@ -110,10 +115,12 @@ const Home = () => {
 
         setPinnedReport(pinned);
         setIssues(reports);
+        setHasMore(Boolean(response.data.hasMore));
       } catch (err) {
         console.error(err);
         setIssues([]);
         setPinnedReport(null);
+        setHasMore(false);
       } finally {
         setLoading(false);
       }
@@ -135,6 +142,43 @@ const Home = () => {
       });
     }
   }, [loading, pinnedReport, sharedReportId]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (loadingMore || !hasMore) return;
+      const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 320;
+      if (nearBottom) {
+        loadMoreReports();
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [loadingMore, hasMore, page, feedTab, sharedReportId]);
+
+  const loadMoreReports = async () => {
+    if (loadingMore || !hasMore || sharedReportId) return;
+
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    try {
+      const endpoint =
+        feedTab === FEED_TABS.PUBLIC
+          ? "/api/report/get"
+          : "/api/gov/post/updates";
+      const response = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}${endpoint}?page=${nextPage}&limit=3`,
+      );
+      const moreReports = response.data.Reports || [];
+      setIssues((prev) => [...prev, ...moreReports]);
+      setPage(nextPage);
+      setHasMore(Boolean(response.data.hasMore));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const toggleDescription = (id) => {
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -297,16 +341,12 @@ const Home = () => {
     onToggleDescription: toggleDescription,
     timeAgo,
     statusBadge,
-    ...(feedTab === FEED_TABS.PUBLIC
-      ? {
-          onUpvote: handleUpvote,
-          onDownvote: handleDownvote,
-          onComment: setCommentReport,
-          onShare: setShareReport,
-          onInsights: setInsightsReport,
-          ...(user && user.role === "gov" ? { onChangeStatus: handleStatusChange } : {}),
-        }
-      : {}),
+    onUpvote: handleUpvote,
+    onDownvote: handleDownvote,
+    onComment: setCommentReport,
+    onShare: setShareReport,
+    onInsights: setInsightsReport,
+    ...(user && user.role === "gov" && feedTab === FEED_TABS.AUTHORITY ? { onChangeStatus: handleStatusChange } : {}),
   };
 
   const showEmpty =
@@ -403,6 +443,12 @@ const Home = () => {
           {(sharedReportId ? otherReports : issues).map((issue) => (
             <ReportFeedItem key={issue._id} {...feedProps} issue={issue} />
           ))}
+
+          {loadingMore && (
+            <div className="flex justify-center py-6">
+              <Loader2 className="animate-spin text-x-accent" size={24} />
+            </div>
+          )}
         </>
       ) : null}
 
@@ -413,6 +459,7 @@ const Home = () => {
         onCommentAdded={handleCommentAdded}
         onCommentLiked={handleCommentLiked}
         user={user}
+        resourceType={feedTab === FEED_TABS.AUTHORITY ? "govPost" : "report"}
       />
 
       <InsightsSheet

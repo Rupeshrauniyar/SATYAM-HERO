@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 export default function Settings() {
-  const { user, setUser, setIsAuthenticated } = useContext(AppContext);
+  const { user, setUser, setIsAuthenticated, theme, setTheme } = useContext(AppContext);
   const navigate = useNavigate();
   const [confirmLogout, setConfirmLogout] = useState(false);
   const t = useTranslation();
@@ -60,17 +60,38 @@ export default function Settings() {
         </div>
 
         <div className="border border-x-border rounded-2xl overflow-hidden divide-y divide-x-border">
-          <SettingsItem icon={<User size={18} />} label={t("profile")} description="Personal information" />
-          <SettingsItem icon={<Shield size={18} />} label={t("privacyAndSecurity") || "Privacy & Security"} description="Permissions" />
-          <SettingsItem icon={<Bell size={18} />} label={t("notifications")} description="Push and email alerts" />
-          <SettingsItem icon={<Palette size={18} />} label={t("appearance") || "Appearance"} description="Theme and display" />
+          <SettingsItem icon={<User size={18} />} label={t("profile")} description={t("personalInformation")} />
+          <SettingsItem icon={<Shield size={18} />} label={t("privacyAndSecurity")} description={t("permissions")} />
+          <SettingsItem icon={<Bell size={18} />} label={t("notifications")} description={t("pushAndEmailAlerts")} />
+          <div className="px-4 py-4 border-t border-x-border bg-x-bg/70">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 text-x-text-secondary"><Palette size={18} /></div>
+                <div className="text-left">
+                  <p className="font-bold text-sm">{t("appearance")}</p>
+                  <p className="text-xs text-x-text-secondary mt-0.5">{t("themeAndDisplay")}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {(["light", "dark", "system"]).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setTheme(mode)}
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold border ${theme === mode ? "bg-x-accent text-white border-x-accent" : "border-x-border text-x-text-secondary bg-x-bg"}`}
+                  >
+                    {t(mode)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
 
         <button
           onClick={() => setConfirmLogout(true)}
           className="mt-6 x-btn x-btn-secondary x-btn-full text-red-500 border-red-200 hover:bg-red-50"
         >
-          <LogOut size={18} /> Log out
+          <LogOut size={18} /> {t("logOut")}
         </button>
       </div>
 
@@ -87,19 +108,19 @@ export default function Settings() {
             >
               <X size={18} />
             </button>
-            <h2 className="text-lg font-bold mb-2">Log out?</h2>
+            <h2 className="text-lg font-bold mb-2">{t("logOutQuestion")}</h2>
             <p className="text-sm text-x-text-secondary mb-6">
-              Are you sure you want to log out of your account?
+              {t("logOutMessage")}
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setConfirmLogout(false)}
                 className="x-btn x-btn-secondary flex-1"
               >
-                Cancel
+                {t("cancel")}
               </button>
               <button onClick={handleLogout} className="x-btn x-btn-primary flex-1 !bg-red-500 hover:!bg-red-600">
-                Log out
+                {t("logOut")}
               </button>
             </div>
           </div>

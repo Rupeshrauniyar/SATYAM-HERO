@@ -197,7 +197,7 @@ export default function Profile() {
       {/* Banner */}
       <div className="h-32 bg-x-bg-secondary border-b border-x-border" />
 
-      <div className="px-4 pb-6">
+      <div className=" pb-6">
         <div className="flex justify-between items-end -mt-12 mb-4">
           <div className="x-avatar x-avatar-lg w-24 h-24 text-3xl border-4 border-x-bg">
             {user.name?.charAt(0)?.toUpperCase()}
@@ -239,7 +239,7 @@ export default function Profile() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
+          {/* <div className="grid grid-cols-3 gap-2">
             <StatCard
               icon={<ThumbsUp size={18} />}
               label="Upvotes"
@@ -255,7 +255,7 @@ export default function Profile() {
               label="Reports"
               value={user.reports?.length || 0}
             />
-          </div>
+          </div> */}
         </div>
         {deleteTarget && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
@@ -312,7 +312,9 @@ export default function Profile() {
         />
 
 
-
+<div className="x-page-header">
+        <h1>Your Reports</h1>
+      </div>
         {issues.length < 1 ? (
           <div className="flex flex-col items-center justify-center py-24 px-6 text-center">
             <LayoutDashboard

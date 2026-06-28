@@ -23,14 +23,20 @@ const getUsers = async (req, res) => {
   }
 };
 
-// UPDATE user role (promote user → gov only)
+// UPDATE user role (promote or demote)
 const updateUserRole = async (req, res) => {
   try {
-    const { update } = req.body; // user ID
+    const { update, role } = req.body; // user ID
     if (!update) {
       return res
         .status(400)
         .json({ success: false, message: "User ID is required" });
+    }
+
+    if (!role || !["gov", "user"].includes(role)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Valid role is required" });
     }
 
     const user = await User.findById(update);
@@ -40,13 +46,11 @@ const updateUserRole = async (req, res) => {
         .json({ success: false, message: "User not found" });
     }
 
-    if (user.role === "gov") {
-      return res
-        .status(403)
-        .json({ success: false, message: "Cannot demote gov to user" });
+    if (user.role === role) {
+      return res.status(200).json({ success: true, user, message: "Role already set" });
     }
 
-    user.role = "gov";
+    user.role = role;
     await user.save();
 
     res.status(200).json({ success: true, user });

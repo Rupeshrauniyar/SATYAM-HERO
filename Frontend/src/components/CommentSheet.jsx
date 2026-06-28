@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Loader2, Send, X, Heart } from "lucide-react";
+import { Loader2, Send, X, Heart, ChevronDown } from "lucide-react";
 import EngagePill from "./EngagePill";
 
 function timeAgo(date) {
@@ -30,6 +30,7 @@ export default function CommentSheet({
   onCommentAdded,
   onCommentLiked,
   user,
+  resourceType = "report",
 }) {
   const [comments, setComments] = useState([]);
   const [text, setText] = useState("");
@@ -39,6 +40,8 @@ export default function CommentSheet({
   const [visible, setVisible] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyText, setReplyText] = useState("");
+  const [loadingRepliesFor, setLoadingRepliesFor] = useState(null);
+  const [replyCache, setReplyCache] = useState({});
 
   useEffect(() => {
     if (!open || !report?._id) return;
@@ -50,7 +53,7 @@ export default function CommentSheet({
       setLoading(true);
       try {
         const res = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/report/comments/${report._id}`,
+          `${import.meta.env.VITE_BACKEND_URL}/api/report/comments/${report._id}?resourceType=${resourceType}&includeReplies=false`,
         );
         if (res.data.success) setComments(res.data.comments);
       } catch (err) {
@@ -83,7 +86,7 @@ export default function CommentSheet({
       const token = localStorage.getItem("token");
       const res = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/report/comment`,
-        { reportId: report._id, text: text.trim(), token },
+        { reportId: report._id, text: text.trim(), token, resourceType },
       );
 
       if (res.data.success) {
@@ -114,6 +117,7 @@ export default function CommentSheet({
           commentId: comment._id,
           token,
           method: liked ? "pull" : "push",
+          resourceType,
         },
       );
 
@@ -136,16 +140,32 @@ export default function CommentSheet({
       const token = localStorage.getItem("token");
       const res = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/report/comment/reply`,
-        { reportId: report._id, commentId: comment._id, text: replyText.trim(), token },
+        { reportId: report._id, commentId: comment._id, text: replyText.trim(), token, resourceType },
       );
       if (res.data.success) {
-        // update local comments state
         setComments((prev) => prev.map((c) => (c._id === comment._id ? res.data.comment : c)));
         setReplyText("");
         setReplyingTo(null);
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const loadReplies = async (comment) => {
+    if (replyCache[comment._id]) return;
+    setLoadingRepliesFor(comment._id);
+    try {
+      const res = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/report/comments/${report._id}/replies/${comment._id}?resourceType=${resourceType}`,
+      );
+      if (res.data.success) {
+        setReplyCache((prev) => ({ ...prev, [comment._id]: res.data.replies || [] }));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingRepliesFor(null);
     }
   };
 
@@ -224,9 +244,23 @@ export default function CommentSheet({
                         </button>
                       </div>
 
-                      {comment.replies?.length > 0 && (
+                      {comment.replyCount > 0 && !replyCache[comment._id] && (
+                        <button
+                          className="x-link text-sm mt-3 inline-flex items-center gap-1"
+                          onClick={() => loadReplies(comment)}
+                        >
+                          {loadingRepliesFor === comment._id ? (
+                            <Loader2 className="animate-spin" size={14} />
+                          ) : (
+                            <ChevronDown size={14} />
+                          )}
+                          View replies
+                        </button>
+                      )}
+
+                      {replyCache[comment._id] && (
                         <div className="mt-3 space-y-3">
-                          {comment.replies.map((r) => (
+                          {replyCache[comment._id].map((r) => (
                             <div key={r._id} className="flex gap-3 items-start">
                               <div className="x-avatar w-8 h-8 text-xs shrink-0">{r.userId?.name?.charAt(0)?.toUpperCase() || "?"}</div>
                               <div className="flex-1 min-w-0">
