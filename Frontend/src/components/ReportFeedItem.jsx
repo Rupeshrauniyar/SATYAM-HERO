@@ -71,7 +71,7 @@ export default function ReportFeedItem({
   const isMine = Boolean(user?._id && (ownerId?.toString() === user._id?.toString() || hasId(userReports, issue._id)));
   const isExpanded = expanded[issue._id];
   const commentCount = Array.isArray(issue.comments) ? issue.comments.length : issue.commentsCount || 0;
-  const showStatusControl = Boolean(onChangeStatus && issue?.userId && !issue?.authorId);
+  const showStatusControl = Boolean(onChangeStatus && issue?.status);
   const badgeClass = typeof statusBadge === "function"
     ? statusBadge(issue.status)
     : (typeof statusBadge === "string" ? statusBadge : "x-badge-pending");
@@ -117,9 +117,9 @@ export default function ReportFeedItem({
             {isMine && (
               <span className="text-x-accent text-xs font-semibold">Your report</span>
             )}
-            {feedTab === feedTabs.AUTHORITY && issue.changer && (
+            {issue.changer && (
               <span className="text-x-text-secondary text-xs">
-                · Updated by {issue.changer.name}
+                · in {issue.status} by {issue.changer.name}
               </span>
             )}
           </div>
