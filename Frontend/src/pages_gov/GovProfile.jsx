@@ -134,78 +134,158 @@ export default function GovProfile() {
 
   const handleUpvote = async (id) => {
     if (!user) return;
+
+    const resourceId = id;
+    const hasUpvoted = (user.upvotes || []).some((up) => up.toString() === resourceId.toString());
+    const previousUserState = {
+      upvotes: user?.upvotes || [],
+      downvotes: user?.downvotes || [],
+    };
+    const previousPost = posts.find((post) => post._id === resourceId);
+
+    setUser((prev) => {
+      if (!prev) return prev;
+      const nextUpvotes = [...(prev.upvotes || [])];
+      const nextDownvotes = [...(prev.downvotes || [])];
+      const normalizedId = resourceId.toString();
+      const hasExistingUpvote = nextUpvotes.some((up) => up.toString() === normalizedId);
+
+      return {
+        ...prev,
+        upvotes: hasExistingUpvote
+          ? nextUpvotes.filter((up) => up.toString() !== normalizedId)
+          : [...nextUpvotes.filter((up) => up.toString() !== normalizedId), resourceId],
+        downvotes: nextDownvotes.filter((down) => down.toString() !== normalizedId),
+      };
+    });
+
+    updatePostInState(resourceId, (post) => {
+      const currentUserId = user?._id;
+      const normalizedUserId = currentUserId?.toString();
+      const nextUpvotes = [...(post.upvotes || [])];
+      const nextDownvotes = [...(post.downvotes || [])];
+
+      if (hasUpvoted) {
+        return {
+          ...post,
+          upvotes: nextUpvotes.filter((item) => String(item) !== normalizedUserId),
+          downvotes: nextDownvotes.filter((item) => String(item) !== normalizedUserId),
+        };
+      }
+
+      return {
+        ...post,
+        upvotes: [...nextUpvotes.filter((item) => String(item) !== normalizedUserId), currentUserId],
+        downvotes: nextDownvotes.filter((item) => String(item) !== normalizedUserId),
+      };
+    });
+
     try {
       const token = localStorage.getItem("token");
-      const hasUpvoted = (user.upvotes || []).some((up) => up.toString() === id.toString());
       const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/report/upvote`, {
-        reportId: id,
+        reportId: resourceId,
         token,
         method: hasUpvoted ? "pull" : "push",
         resourceType: "govPost",
       });
       if (res.status === 200 && res.data.success) {
-        if (!hasUpvoted) {
-          setUser((prev) => ({
-            ...prev,
-            upvotes: [...prev.upvotes, id],
-            downvotes: prev.downvotes.filter((down) => down !== id),
-          }));
-          updatePostInState(id, (post) => ({
+        const nextResource = res.data.resource || null;
+        if (nextResource) {
+          updatePostInState(resourceId, (post) => ({
             ...post,
-            upvotes: [...(post.upvotes || []), user._id],
-            downvotes: (post.downvotes || []).filter((item) => item !== user._id),
-          }));
-        } else {
-          setUser((prev) => ({
-            ...prev,
-            upvotes: prev.upvotes.filter((up) => up !== id),
-          }));
-          updatePostInState(id, (post) => ({
-            ...post,
-            upvotes: (post.upvotes || []).filter((item) => item !== user._id),
+            upvotes: nextResource.upvotes || [],
+            downvotes: nextResource.downvotes || [],
           }));
         }
       }
     } catch (err) {
+      setUser((prev) => (prev ? { ...prev, upvotes: previousUserState.upvotes, downvotes: previousUserState.downvotes } : prev));
+      if (previousPost) {
+        updatePostInState(resourceId, (post) => ({
+          ...post,
+          upvotes: previousPost.upvotes || [],
+          downvotes: previousPost.downvotes || [],
+        }));
+      }
       console.error(err);
     }
   };
 
   const handleDownvote = async (id) => {
     if (!user) return;
+
+    const resourceId = id;
+    const hasDownvoted = (user.downvotes || []).some((down) => down.toString() === resourceId.toString());
+    const previousUserState = {
+      upvotes: user?.upvotes || [],
+      downvotes: user?.downvotes || [],
+    };
+    const previousPost = posts.find((post) => post._id === resourceId);
+
+    setUser((prev) => {
+      if (!prev) return prev;
+      const nextUpvotes = [...(prev.upvotes || [])];
+      const nextDownvotes = [...(prev.downvotes || [])];
+      const normalizedId = resourceId.toString();
+      const hasExistingDownvote = nextDownvotes.some((down) => down.toString() === normalizedId);
+
+      return {
+        ...prev,
+        downvotes: hasExistingDownvote
+          ? nextDownvotes.filter((down) => down.toString() !== normalizedId)
+          : [...nextDownvotes.filter((down) => down.toString() !== normalizedId), resourceId],
+        upvotes: nextUpvotes.filter((up) => up.toString() !== normalizedId),
+      };
+    });
+
+    updatePostInState(resourceId, (post) => {
+      const currentUserId = user?._id;
+      const normalizedUserId = currentUserId?.toString();
+      const nextUpvotes = [...(post.upvotes || [])];
+      const nextDownvotes = [...(post.downvotes || [])];
+
+      if (hasDownvoted) {
+        return {
+          ...post,
+          upvotes: nextUpvotes.filter((item) => String(item) !== normalizedUserId),
+          downvotes: nextDownvotes.filter((item) => String(item) !== normalizedUserId),
+        };
+      }
+
+      return {
+        ...post,
+        upvotes: nextUpvotes.filter((item) => String(item) !== normalizedUserId),
+        downvotes: [...nextDownvotes.filter((item) => String(item) !== normalizedUserId), currentUserId],
+      };
+    });
+
     try {
       const token = localStorage.getItem("token");
-      const hasDownvoted = (user.downvotes || []).some((down) => down.toString() === id.toString());
       const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/report/downvote`, {
-        reportId: id,
+        reportId: resourceId,
         token,
         method: hasDownvoted ? "pull" : "push",
         resourceType: "govPost",
       });
       if (res.status === 200 && res.data.success) {
-        if (!hasDownvoted) {
-          setUser((prev) => ({
-            ...prev,
-            downvotes: [...prev.downvotes, id],
-            upvotes: prev.upvotes.filter((up) => up !== id),
-          }));
-          updatePostInState(id, (post) => ({
+        const nextResource = res.data.resource || null;
+        if (nextResource) {
+          updatePostInState(resourceId, (post) => ({
             ...post,
-            downvotes: [...(post.downvotes || []), user._id],
-            upvotes: (post.upvotes || []).filter((item) => item !== user._id),
-          }));
-        } else {
-          setUser((prev) => ({
-            ...prev,
-            downvotes: prev.downvotes.filter((down) => down !== id),
-          }));
-          updatePostInState(id, (post) => ({
-            ...post,
-            downvotes: (post.downvotes || []).filter((item) => item !== user._id),
+            upvotes: nextResource.upvotes || [],
+            downvotes: nextResource.downvotes || [],
           }));
         }
       }
     } catch (err) {
+      setUser((prev) => (prev ? { ...prev, upvotes: previousUserState.upvotes, downvotes: previousUserState.downvotes } : prev));
+      if (previousPost) {
+        updatePostInState(resourceId, (post) => ({
+          ...post,
+          upvotes: previousPost.upvotes || [],
+          downvotes: previousPost.downvotes || [],
+        }));
+      }
       console.error(err);
     }
   };

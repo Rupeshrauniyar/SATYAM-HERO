@@ -3,11 +3,10 @@ import { AppContext } from "../contexts/AppContext";
 import {
   CheckCircle,
   XCircle,
-  ThumbsUp,
-  ThumbsDown,
-  FileText,
   Trash,
-  LayoutDashboard 
+  LayoutDashboard,
+  MessageSquare,
+  TrendingUp,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import axios from "axios";
@@ -88,13 +87,57 @@ export default function Profile() {
 
   const handleUpvote = async (e) => {
     if (!user) return;
+
+    const resourceId = e;
+    const hasUpvoted = (user.upvotes || []).some((up) => up.toString() === resourceId.toString());
+    const previousUserState = {
+      upvotes: user?.upvotes || [],
+      downvotes: user?.downvotes || [],
+    };
+    const previousIssue = issues.find((issue) => issue._id === resourceId);
+
+    setUser((prev) => {
+      if (!prev) return prev;
+      const nextUpvotes = [...(prev.upvotes || [])];
+      const nextDownvotes = [...(prev.downvotes || [])];
+      const normalizedId = resourceId.toString();
+      const hasExistingUpvote = nextUpvotes.some((up) => up.toString() === normalizedId);
+
+      return {
+        ...prev,
+        upvotes: hasExistingUpvote
+          ? nextUpvotes.filter((up) => up.toString() !== normalizedId)
+          : [...nextUpvotes.filter((up) => up.toString() !== normalizedId), resourceId],
+        downvotes: nextDownvotes.filter((down) => down.toString() !== normalizedId),
+      };
+    });
+
+    updateIssueInState(resourceId, (issue) => {
+      const currentUserId = user?._id;
+      const normalizedUserId = currentUserId?.toString();
+      const nextUpvotes = [...(issue.upvotes || [])];
+      const nextDownvotes = [...(issue.downvotes || [])];
+
+      if (hasUpvoted) {
+        return {
+          ...issue,
+          upvotes: nextUpvotes.filter((item) => String(item) !== normalizedUserId),
+          downvotes: nextDownvotes.filter((item) => String(item) !== normalizedUserId),
+        };
+      }
+
+      return {
+        ...issue,
+        upvotes: [...nextUpvotes.filter((item) => String(item) !== normalizedUserId), currentUserId],
+        downvotes: nextDownvotes.filter((item) => String(item) !== normalizedUserId),
+      };
+    });
+
     try {
       const token = localStorage.getItem("token");
-      const hasUpvoted = (user.upvotes || []).some((up) => up.toString() === e.toString());
-
       const res = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/report/upvote`,
-        { reportId: e, token, method: hasUpvoted ? "pull" : "push" },
+        { reportId: resourceId, token, method: hasUpvoted ? "pull" : "push" },
       );
 
       if (res.status === 200 && res.data.success) {
@@ -106,44 +149,79 @@ export default function Profile() {
         }
 
         if (nextResource) {
-          updateIssueInState(e, (issue) => ({
+          updateIssueInState(resourceId, (issue) => ({
             ...issue,
             upvotes: nextResource.upvotes || [],
             downvotes: nextResource.downvotes || [],
           }));
-        } else if (!hasUpvoted) {
-          setUser((prev) => ({
-            ...prev,
-            upvotes: [...prev.upvotes, e],
-            downvotes: prev.downvotes.filter((down) => down !== e),
-          }));
-          updateIssueInState(e, (issue) => ({
-            ...issue,
-            upvotes: [...(issue.upvotes || []), user._id],
-            downvotes: (issue.downvotes || []).filter((d) => d !== user._id),
-          }));
-        } else {
-          setUser((prev) => ({ ...prev, upvotes: prev.upvotes.filter((up) => up !== e) }));
-          updateIssueInState(e, (issue) => ({
-            ...issue,
-            upvotes: (issue.upvotes || []).filter((id) => id !== user._id),
-          }));
         }
       }
     } catch (err) {
+      setUser((prev) => (prev ? { ...prev, upvotes: previousUserState.upvotes, downvotes: previousUserState.downvotes } : prev));
+      if (previousIssue) {
+        updateIssueInState(resourceId, (issue) => ({
+          ...issue,
+          upvotes: previousIssue.upvotes || [],
+          downvotes: previousIssue.downvotes || [],
+        }));
+      }
       console.log(err);
     }
   };
 
   const handleDownvote = async (e) => {
     if (!user) return;
+
+    const resourceId = e;
+    const hasDownvoted = (user.downvotes || []).some((down) => down.toString() === resourceId.toString());
+    const previousUserState = {
+      upvotes: user?.upvotes || [],
+      downvotes: user?.downvotes || [],
+    };
+    const previousIssue = issues.find((issue) => issue._id === resourceId);
+
+    setUser((prev) => {
+      if (!prev) return prev;
+      const nextUpvotes = [...(prev.upvotes || [])];
+      const nextDownvotes = [...(prev.downvotes || [])];
+      const normalizedId = resourceId.toString();
+      const hasExistingDownvote = nextDownvotes.some((down) => down.toString() === normalizedId);
+
+      return {
+        ...prev,
+        downvotes: hasExistingDownvote
+          ? nextDownvotes.filter((down) => down.toString() !== normalizedId)
+          : [...nextDownvotes.filter((down) => down.toString() !== normalizedId), resourceId],
+        upvotes: nextUpvotes.filter((up) => up.toString() !== normalizedId),
+      };
+    });
+
+    updateIssueInState(resourceId, (issue) => {
+      const currentUserId = user?._id;
+      const normalizedUserId = currentUserId?.toString();
+      const nextUpvotes = [...(issue.upvotes || [])];
+      const nextDownvotes = [...(issue.downvotes || [])];
+
+      if (hasDownvoted) {
+        return {
+          ...issue,
+          upvotes: nextUpvotes.filter((item) => String(item) !== normalizedUserId),
+          downvotes: nextDownvotes.filter((item) => String(item) !== normalizedUserId),
+        };
+      }
+
+      return {
+        ...issue,
+        upvotes: nextUpvotes.filter((item) => String(item) !== normalizedUserId),
+        downvotes: [...nextDownvotes.filter((item) => String(item) !== normalizedUserId), currentUserId],
+      };
+    });
+
     try {
       const token = localStorage.getItem("token");
-      const hasDownvoted = (user.downvotes || []).some((down) => down.toString() === e.toString());
-
       const res = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/report/downvote`,
-        { reportId: e, token, method: hasDownvoted ? "pull" : "push" },
+        { reportId: resourceId, token, method: hasDownvoted ? "pull" : "push" },
       );
 
       if (res.status === 200 && res.data.success) {
@@ -155,31 +233,22 @@ export default function Profile() {
         }
 
         if (nextResource) {
-          updateIssueInState(e, (issue) => ({
+          updateIssueInState(resourceId, (issue) => ({
             ...issue,
             upvotes: nextResource.upvotes || [],
             downvotes: nextResource.downvotes || [],
           }));
-        } else if (!hasDownvoted) {
-          setUser((prev) => ({
-            ...prev,
-            downvotes: [...prev.downvotes, e],
-            upvotes: prev.upvotes.filter((up) => up !== e),
-          }));
-          updateIssueInState(e, (issue) => ({
-            ...issue,
-            downvotes: [...(issue.downvotes || []), user._id],
-            upvotes: (issue.upvotes || []).filter((u) => u !== user._id),
-          }));
-        } else {
-          setUser((prev) => ({ ...prev, downvotes: prev.downvotes.filter((down) => down !== e) }));
-          updateIssueInState(e, (issue) => ({
-            ...issue,
-            downvotes: (issue.downvotes || []).filter((id) => id !== user._id),
-          }));
         }
       }
     } catch (err) {
+      setUser((prev) => (prev ? { ...prev, upvotes: previousUserState.upvotes, downvotes: previousUserState.downvotes } : prev));
+      if (previousIssue) {
+        updateIssueInState(resourceId, (issue) => ({
+          ...issue,
+          upvotes: previousIssue.upvotes || [],
+          downvotes: previousIssue.downvotes || [],
+        }));
+      }
       console.log(err);
     }
   };
@@ -226,69 +295,34 @@ export default function Profile() {
     });
 
   return (
-    <div>
-      {/* Banner */}
-      <div className="h-32 bg-x-bg-secondary border-b border-x-border" />
-
-      <div className=" pb-6">
-        <div className="flex justify-between items-end -mt-12 mb-4">
-          <div className="x-avatar x-avatar-lg w-24 h-24 text-3xl border-4 border-x-bg">
-            {displayInitial}
-          </div>
-        </div>
-
-        <h1 className="text-xl font-bold">{displayName}</h1>
-        <p className="text-x-text-secondary text-sm">
-          {user.phone_number ? `+977 ${user.phone_number}` : "No phone number"}
-        </p>
-
-        <div className="flex items-center gap-2 mt-2">
-          {user.verified ? (
-            <CheckCircle className="w-4 h-4 text-green-500" />
-          ) : (
-            <XCircle className="w-4 h-4 text-red-500" />
-          )}
-          <span className="text-sm text-x-text-secondary">
-            {user.verified ? "Verified account" : "Unverified account"}
-          </span>
-        </div>
-
-        {/* Stats row — X style */}
-        <div className="flex gap-5 mt-4 text-sm">
-          <StatInline label="Reports" value={totalReports} />
-          <StatInline label="Upvotes" value={totalUpvotes} />
-          <StatInline label="Downvotes" value={totalDownvotes} />
-        </div>
-
-        <div className="mt-6 space-y-3">
-          <div className="x-panel">
-            <h2 className="font-bold mb-3">Account Details</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-              <Detail label="Joined" value={formattedDate(user.createdAt)} />
-              <Detail
-                label="Last updated"
-                value={formattedDate(user.updatedAt)}
-              />
+    <div className="pb-6">
+      <div className="px-4 pt-2">
+        <div className="x-panel p-4">
+          <div className="flex items-center gap-3">
+            <div className="x-avatar x-avatar-lg w-16 h-16 text-xl border-2 border-x-bg shrink-0">
+              {displayInitial}
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-lg font-semibold truncate">{displayName}</h1>
+              <p className="text-sm text-x-text-secondary">
+                {user.phone_number ? `+977 ${user.phone_number}` : "No phone number"}
+              </p>
+              <div className="mt-1 flex items-center gap-2 text-sm text-x-text-secondary">
+                {user.verified ? (
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                ) : (
+                  <XCircle className="w-4 h-4 text-red-500" />
+                )}
+                <span>{user.verified ? "Verified" : "Unverified"}</span>
+              </div>
             </div>
           </div>
 
-          {/* <div className="grid grid-cols-3 gap-2">
-            <StatCard
-              icon={<ThumbsUp size={18} />}
-              label="Upvotes"
-              value={user.upvotes.length}
-            />
-            <StatCard
-              icon={<ThumbsDown size={18} />}
-              label="Downvotes"
-              value={user.downvotes.length}
-            />
-            <StatCard
-              icon={<FileText size={18} />}
-              label="Reports"
-              value={user.reports?.length || 0}
-            />
-          </div> */}
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <StatCard label="Reports" value={totalReports} icon={<LayoutDashboard size={15} />} />
+            <StatCard label="Upvotes" value={totalUpvotes} icon={<TrendingUp size={15} />} />
+            <StatCard label="Downvotes" value={totalDownvotes} icon={<MessageSquare size={15} />} />
+          </div>
         </div>
         {deleteTarget && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
@@ -345,8 +379,12 @@ export default function Profile() {
         />
 
 
-<div className="x-page-header">
-        <h1>Your Reports</h1>
+<div className="mt-5 flex items-center justify-between gap-3 px-1">
+        <div>
+          <h2 className="text-base font-semibold">Your reports</h2>
+          <p className="text-sm text-x-text-secondary">Recent issues you shared</p>
+        </div>
+        <span className="text-sm text-x-text-secondary">{issues.length}</span>
       </div>
         {issues.length < 1 ? (
           <div className="flex flex-col items-center justify-center py-24 px-6 text-center">
@@ -400,32 +438,12 @@ export default function Profile() {
   );
 }
 
-function StatInline({ label, value }) {
-  return (
-    <span>
-      <strong className="text-x-text">{value}</strong>{" "}
-      <span className="text-x-text-secondary">{label}</span>
-    </span>
-  );
-}
-
 function StatCard({ icon, label, value }) {
   return (
-    <div className="x-panel text-center py-4">
-      <div className="flex justify-center text-x-text-secondary mb-1">
-        {icon}
-      </div>
-      <p className="text-xl font-bold">{value}</p>
-      <p className="text-xs text-x-text-secondary">{label}</p>
-    </div>
-  );
-}
-
-function Detail({ label, value }) {
-  return (
-    <div>
-      <p className="text-x-text-secondary text-xs">{label}</p>
-      <p className="font-semibold">{value}</p>
+    <div className="rounded-2xl border border-x-border bg-x-bg-secondary px-2 py-3 text-center">
+      <div className="flex justify-center text-x-accent mb-1">{icon}</div>
+      <p className="text-base font-semibold">{value}</p>
+      <p className="text-[11px] text-x-text-secondary">{label}</p>
     </div>
   );
 }

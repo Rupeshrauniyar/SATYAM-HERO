@@ -88,12 +88,57 @@ const GovDashboard = () => {
 
   const handleUpvote = async (issueId, role) => {
     if (!user) return;
+
+    const resourceId = issueId;
+    const hasUpvoted = (user.upvotes || []).some((up) => up.toString() === resourceId.toString());
+    const previousUserState = {
+      upvotes: user?.upvotes || [],
+      downvotes: user?.downvotes || [],
+    };
+    const previousIssue = issues.find((issue) => issue._id === resourceId);
+
+    setUser((prev) => {
+      if (!prev) return prev;
+      const nextUpvotes = [...(prev.upvotes || [])];
+      const nextDownvotes = [...(prev.downvotes || [])];
+      const normalizedId = resourceId.toString();
+      const hasExistingUpvote = nextUpvotes.some((up) => up.toString() === normalizedId);
+
+      return {
+        ...prev,
+        upvotes: hasExistingUpvote
+          ? nextUpvotes.filter((up) => up.toString() !== normalizedId)
+          : [...nextUpvotes.filter((up) => up.toString() !== normalizedId), resourceId],
+        downvotes: nextDownvotes.filter((down) => down.toString() !== normalizedId),
+      };
+    });
+
+    updateIssueInState(resourceId, (issue) => {
+      const currentUserId = user?._id;
+      const normalizedUserId = currentUserId?.toString();
+      const nextUpvotes = [...(issue.upvotes || [])];
+      const nextDownvotes = [...(issue.downvotes || [])];
+
+      if (hasUpvoted) {
+        return {
+          ...issue,
+          upvotes: nextUpvotes.filter((item) => String(item) !== normalizedUserId),
+          downvotes: nextDownvotes.filter((item) => String(item) !== normalizedUserId),
+        };
+      }
+
+      return {
+        ...issue,
+        upvotes: [...nextUpvotes.filter((item) => String(item) !== normalizedUserId), currentUserId],
+        downvotes: nextDownvotes.filter((item) => String(item) !== normalizedUserId),
+      };
+    });
+
     try {
       const tokenValue = localStorage.getItem("token");
-      const hasUpvoted = (user.upvotes || []).some((up) => up.toString() === issueId.toString());
       const res = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/report/upvote`,
-        { reportId: issueId, token: tokenValue, method: hasUpvoted ? "pull" : "push", resourceType: role === "gov" ? "govPost" : "report" },
+        { reportId: resourceId, token: tokenValue, method: hasUpvoted ? "pull" : "push", resourceType: role === "gov" ? "govPost" : "report" },
       );
       if (res.status === 200 && res.data.success) {
         const nextUser = res.data.user || null;
@@ -104,32 +149,79 @@ const GovDashboard = () => {
         }
 
         if (nextResource) {
-          updateIssueInState(issueId, (issue) => ({
+          updateIssueInState(resourceId, (issue) => ({
             ...issue,
             upvotes: nextResource.upvotes || [],
             downvotes: nextResource.downvotes || [],
           }));
-        } else if (!hasUpvoted) {
-          setUser((prev) => ({ ...prev, upvotes: [...(prev.upvotes || []), issueId], downvotes: (prev.downvotes || []).filter((down) => down !== issueId) }));
-          updateIssueInState(issueId, (issue) => ({ ...issue, upvotes: [...(issue.upvotes || []), user._id], downvotes: (issue.downvotes || []).filter((d) => d !== user._id) }));
-        } else {
-          setUser((prev) => ({ ...prev, upvotes: (prev.upvotes || []).filter((up) => up !== issueId) }));
-          updateIssueInState(issueId, (issue) => ({ ...issue, upvotes: (issue.upvotes || []).filter((id) => id !== user._id) }));
         }
       }
     } catch (err) {
+      setUser((prev) => (prev ? { ...prev, upvotes: previousUserState.upvotes, downvotes: previousUserState.downvotes } : prev));
+      if (previousIssue) {
+        updateIssueInState(resourceId, (issue) => ({
+          ...issue,
+          upvotes: previousIssue.upvotes || [],
+          downvotes: previousIssue.downvotes || [],
+        }));
+      }
       console.error(err);
     }
   };
 
   const handleDownvote = async (issueId, role) => {
     if (!user) return;
+
+    const resourceId = issueId;
+    const hasDownvoted = (user.downvotes || []).some((down) => down.toString() === resourceId.toString());
+    const previousUserState = {
+      upvotes: user?.upvotes || [],
+      downvotes: user?.downvotes || [],
+    };
+    const previousIssue = issues.find((issue) => issue._id === resourceId);
+
+    setUser((prev) => {
+      if (!prev) return prev;
+      const nextUpvotes = [...(prev.upvotes || [])];
+      const nextDownvotes = [...(prev.downvotes || [])];
+      const normalizedId = resourceId.toString();
+      const hasExistingDownvote = nextDownvotes.some((down) => down.toString() === normalizedId);
+
+      return {
+        ...prev,
+        downvotes: hasExistingDownvote
+          ? nextDownvotes.filter((down) => down.toString() !== normalizedId)
+          : [...nextDownvotes.filter((down) => down.toString() !== normalizedId), resourceId],
+        upvotes: nextUpvotes.filter((up) => up.toString() !== normalizedId),
+      };
+    });
+
+    updateIssueInState(resourceId, (issue) => {
+      const currentUserId = user?._id;
+      const normalizedUserId = currentUserId?.toString();
+      const nextUpvotes = [...(issue.upvotes || [])];
+      const nextDownvotes = [...(issue.downvotes || [])];
+
+      if (hasDownvoted) {
+        return {
+          ...issue,
+          upvotes: nextUpvotes.filter((item) => String(item) !== normalizedUserId),
+          downvotes: nextDownvotes.filter((item) => String(item) !== normalizedUserId),
+        };
+      }
+
+      return {
+        ...issue,
+        upvotes: nextUpvotes.filter((item) => String(item) !== normalizedUserId),
+        downvotes: [...nextDownvotes.filter((item) => String(item) !== normalizedUserId), currentUserId],
+      };
+    });
+
     try {
       const tokenValue = localStorage.getItem("token");
-      const hasDownvoted = (user.downvotes || []).some((down) => down.toString() === issueId.toString());
       const res = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/report/downvote`,
-        { reportId: issueId, token: tokenValue, method: hasDownvoted ? "pull" : "push", resourceType: role === "gov" ? "govPost" : "report" },
+        { reportId: resourceId, token: tokenValue, method: hasDownvoted ? "pull" : "push", resourceType: role === "gov" ? "govPost" : "report" },
       );
       if (res.status === 200 && res.data.success) {
         const nextUser = res.data.user || null;
@@ -140,20 +232,22 @@ const GovDashboard = () => {
         }
 
         if (nextResource) {
-          updateIssueInState(issueId, (issue) => ({
+          updateIssueInState(resourceId, (issue) => ({
             ...issue,
             upvotes: nextResource.upvotes || [],
             downvotes: nextResource.downvotes || [],
           }));
-        } else if (!hasDownvoted) {
-          setUser((prev) => ({ ...prev, downvotes: [...(prev.downvotes || []), issueId], upvotes: (prev.upvotes || []).filter((up) => up !== issueId) }));
-          updateIssueInState(issueId, (issue) => ({ ...issue, downvotes: [...(issue.downvotes || []), user._id], upvotes: (issue.upvotes || []).filter((u) => u !== user._id) }));
-        } else {
-          setUser((prev) => ({ ...prev, downvotes: (prev.downvotes || []).filter((down) => down !== issueId) }));
-          updateIssueInState(issueId, (issue) => ({ ...issue, downvotes: (issue.downvotes || []).filter((id) => id !== user._id) }));
         }
       }
     } catch (err) {
+      setUser((prev) => (prev ? { ...prev, upvotes: previousUserState.upvotes, downvotes: previousUserState.downvotes } : prev));
+      if (previousIssue) {
+        updateIssueInState(resourceId, (issue) => ({
+          ...issue,
+          upvotes: previousIssue.upvotes || [],
+          downvotes: previousIssue.downvotes || [],
+        }));
+      }
       console.error(err);
     }
   };

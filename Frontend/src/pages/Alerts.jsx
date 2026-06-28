@@ -96,12 +96,57 @@ const Alerts = () => {
 
   const handleUpvote = async (id) => {
     if (!user) return;
+
+    const resourceId = id;
+    const hasUpvoted = (user.upvotes || []).some((up) => up.toString() === resourceId.toString());
+    const previousUserState = {
+      upvotes: user?.upvotes || [],
+      downvotes: user?.downvotes || [],
+    };
+    const previousAlert = alerts.find((alert) => alert._id === resourceId);
+
+    setUser((prev) => {
+      if (!prev) return prev;
+      const nextUpvotes = [...(prev.upvotes || [])];
+      const nextDownvotes = [...(prev.downvotes || [])];
+      const normalizedId = resourceId.toString();
+      const hasExistingUpvote = nextUpvotes.some((up) => up.toString() === normalizedId);
+
+      return {
+        ...prev,
+        upvotes: hasExistingUpvote
+          ? nextUpvotes.filter((up) => up.toString() !== normalizedId)
+          : [...nextUpvotes.filter((up) => up.toString() !== normalizedId), resourceId],
+        downvotes: nextDownvotes.filter((down) => down.toString() !== normalizedId),
+      };
+    });
+
+    updateAlertInState(resourceId, (alert) => {
+      const currentUserId = user?._id;
+      const normalizedUserId = currentUserId?.toString();
+      const nextUpvotes = [...(alert.upvotes || [])];
+      const nextDownvotes = [...(alert.downvotes || [])];
+
+      if (hasUpvoted) {
+        return {
+          ...alert,
+          upvotes: nextUpvotes.filter((item) => String(item) !== normalizedUserId),
+          downvotes: nextDownvotes.filter((item) => String(item) !== normalizedUserId),
+        };
+      }
+
+      return {
+        ...alert,
+        upvotes: [...nextUpvotes.filter((item) => String(item) !== normalizedUserId), currentUserId],
+        downvotes: nextDownvotes.filter((item) => String(item) !== normalizedUserId),
+      };
+    });
+
     try {
       const token = localStorage.getItem("token");
-      const hasUpvoted = (user.upvotes || []).some((up) => up.toString() === id.toString());
       const res = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/report/upvote`,
-        { reportId: id, token, method: hasUpvoted ? "pull" : "push", resourceType: "govPost" },
+        { reportId: resourceId, token, method: hasUpvoted ? "pull" : "push", resourceType: "govPost" },
       );
       if (res.status === 200 && res.data.success) {
         const nextUser = res.data.user || null;
@@ -112,46 +157,79 @@ const Alerts = () => {
         }
 
         if (nextResource) {
-          updateAlertInState(id, (alert) => ({
+          updateAlertInState(resourceId, (alert) => ({
             ...alert,
             upvotes: nextResource.upvotes || [],
             downvotes: nextResource.downvotes || [],
           }));
-        } else if (!hasUpvoted) {
-          setUser((prev) => ({
-            ...prev,
-            upvotes: [...prev.upvotes, id],
-            downvotes: prev.downvotes.filter((down) => down !== id),
-          }));
-          updateAlertInState(id, (alert) => ({
-            ...alert,
-            upvotes: [...(alert.upvotes || []), user._id],
-            downvotes: (alert.downvotes || []).filter((d) => d !== user._id),
-          }));
-        } else {
-          setUser((prev) => ({
-            ...prev,
-            upvotes: prev.upvotes.filter((up) => up !== id),
-          }));
-          updateAlertInState(id, (alert) => ({
-            ...alert,
-            upvotes: (alert.upvotes || []).filter((item) => item !== user._id),
-          }));
         }
       }
     } catch (err) {
+      setUser((prev) => (prev ? { ...prev, upvotes: previousUserState.upvotes, downvotes: previousUserState.downvotes } : prev));
+      if (previousAlert) {
+        updateAlertInState(resourceId, (alert) => ({
+          ...alert,
+          upvotes: previousAlert.upvotes || [],
+          downvotes: previousAlert.downvotes || [],
+        }));
+      }
       console.error(err);
     }
   };
 
   const handleDownvote = async (id) => {
     if (!user) return;
+
+    const resourceId = id;
+    const hasDownvoted = (user.downvotes || []).some((down) => down.toString() === resourceId.toString());
+    const previousUserState = {
+      upvotes: user?.upvotes || [],
+      downvotes: user?.downvotes || [],
+    };
+    const previousAlert = alerts.find((alert) => alert._id === resourceId);
+
+    setUser((prev) => {
+      if (!prev) return prev;
+      const nextUpvotes = [...(prev.upvotes || [])];
+      const nextDownvotes = [...(prev.downvotes || [])];
+      const normalizedId = resourceId.toString();
+      const hasExistingDownvote = nextDownvotes.some((down) => down.toString() === normalizedId);
+
+      return {
+        ...prev,
+        downvotes: hasExistingDownvote
+          ? nextDownvotes.filter((down) => down.toString() !== normalizedId)
+          : [...nextDownvotes.filter((down) => down.toString() !== normalizedId), resourceId],
+        upvotes: nextUpvotes.filter((up) => up.toString() !== normalizedId),
+      };
+    });
+
+    updateAlertInState(resourceId, (alert) => {
+      const currentUserId = user?._id;
+      const normalizedUserId = currentUserId?.toString();
+      const nextUpvotes = [...(alert.upvotes || [])];
+      const nextDownvotes = [...(alert.downvotes || [])];
+
+      if (hasDownvoted) {
+        return {
+          ...alert,
+          upvotes: nextUpvotes.filter((item) => String(item) !== normalizedUserId),
+          downvotes: nextDownvotes.filter((item) => String(item) !== normalizedUserId),
+        };
+      }
+
+      return {
+        ...alert,
+        upvotes: nextUpvotes.filter((item) => String(item) !== normalizedUserId),
+        downvotes: [...nextDownvotes.filter((item) => String(item) !== normalizedUserId), currentUserId],
+      };
+    });
+
     try {
       const token = localStorage.getItem("token");
-      const hasDownvoted = (user.downvotes || []).some((down) => down.toString() === id.toString());
       const res = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/report/downvote`,
-        { reportId: id, token, method: hasDownvoted ? "pull" : "push", resourceType: "govPost" },
+        { reportId: resourceId, token, method: hasDownvoted ? "pull" : "push", resourceType: "govPost" },
       );
       if (res.status === 200 && res.data.success) {
         const nextUser = res.data.user || null;
@@ -162,34 +240,22 @@ const Alerts = () => {
         }
 
         if (nextResource) {
-          updateAlertInState(id, (alert) => ({
+          updateAlertInState(resourceId, (alert) => ({
             ...alert,
             upvotes: nextResource.upvotes || [],
             downvotes: nextResource.downvotes || [],
           }));
-        } else if (!hasDownvoted) {
-          setUser((prev) => ({
-            ...prev,
-            downvotes: [...prev.downvotes, id],
-            upvotes: prev.upvotes.filter((up) => up !== id),
-          }));
-          updateAlertInState(id, (alert) => ({
-            ...alert,
-            downvotes: [...(alert.downvotes || []), user._id],
-            upvotes: (alert.upvotes || []).filter((u) => u !== user._id),
-          }));
-        } else {
-          setUser((prev) => ({
-            ...prev,
-            downvotes: prev.downvotes.filter((down) => down !== id),
-          }));
-          updateAlertInState(id, (alert) => ({
-            ...alert,
-            downvotes: (alert.downvotes || []).filter((item) => item !== user._id),
-          }));
         }
       }
     } catch (err) {
+      setUser((prev) => (prev ? { ...prev, upvotes: previousUserState.upvotes, downvotes: previousUserState.downvotes } : prev));
+      if (previousAlert) {
+        updateAlertInState(resourceId, (alert) => ({
+          ...alert,
+          upvotes: previousAlert.upvotes || [],
+          downvotes: previousAlert.downvotes || [],
+        }));
+      }
       console.error(err);
     }
   };

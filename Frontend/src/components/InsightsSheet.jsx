@@ -52,42 +52,31 @@ export default function InsightsSheet({ report, open, onClose }) {
         </div>
 
         <div className="x-sheet-body">
-          <p className="font-bold text-base mb-1">{report?.title}</p>
-          <p className="text-x-text-secondary text-sm mb-6">
-            Ward {report?.ward_number} · {report?.category} · {report?.status}
-          </p>
+          <div className="mb-4">
+            <p className="text-sm font-semibold">{report?.title || "Issue activity"}</p>
+            <p className="text-sm text-x-text-secondary mt-1">
+              {report?.ward_number ? `Ward ${report?.ward_number}` : "Community issue"} · {report?.category || "General"}
+            </p>
+          </div>
 
-          <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="grid grid-cols-2 gap-3 mb-4">
             {stats.map(({ icon: Icon, label, value, color }) => (
-              <div key={label} className="x-panel text-center py-4">
-                <Icon size={20} className={`mx-auto mb-1 ${color}`} />
-                <p className="text-xl font-bold">{value}</p>
-                <p className="text-xs text-x-text-secondary">{label}</p>
+              <div key={label} className="x-panel py-3">
+                <div className="flex items-center gap-2">
+                  <Icon size={15} className={color} />
+                  <p className="text-xs text-x-text-secondary">{label}</p>
+                </div>
+                <p className="mt-2 text-lg font-semibold">{value}</p>
               </div>
             ))}
           </div>
 
           <div className="x-panel">
-            <p className="text-sm font-bold mb-2">Community approval</p>
-            <div className="h-2.5 rounded-full bg-x-border overflow-hidden">
-              <div
-                className="h-full rounded-full bg-x-accent transition-all duration-500"
-                style={{ width: `${approval}%` }}
-              />
+            <p className="text-sm font-semibold mb-2">Approval</p>
+            <div className="h-2 rounded-full bg-x-border overflow-hidden">
+              <div className="h-full rounded-full bg-x-accent" style={{ width: `${approval}%` }} />
             </div>
-            <p className="text-x-text-secondary text-xs mt-2">
-              {approval}% positive based on votes
-            </p>
-          </div>
-
-          <div className="x-panel mt-3">
-            <p className="text-sm font-bold mb-1">Engagement score</p>
-            <p className="text-2xl font-bold text-x-accent">
-              {upvotes + comments + shares}
-            </p>
-            <p className="text-x-text-secondary text-xs">
-              Combined upvotes, comments & shares
-            </p>
+            <p className="text-xs text-x-text-secondary mt-2">{approval}% positive based on votes</p>
           </div>
         </div>
       </div>
