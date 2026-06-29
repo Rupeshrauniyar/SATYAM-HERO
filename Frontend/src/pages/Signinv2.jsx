@@ -134,7 +134,7 @@ export default function Signinv2() {
   return (
     <div className="min-h-screen w-full flex flex-col bg-x-bg">
       {/* Back button + Progress bar */}
-      <div className="px-8 pt-12 pb-4">
+      <div className="px-8 pt-12 pb-4 shrink-0">
         <div className="flex items-center justify-between gap-4 mb-6">
           {/* Progress bar */}
           <div className="flex items-center justify-center gap-2">
@@ -172,154 +172,149 @@ export default function Signinv2() {
         </div>
       </div>
 
-      {/* Sliding panels — overflow hidden only on the track wrapper */}
-      <div className="flex-1 flex flex-col justify-center w-full max-w-md mx-auto px-4">
-        <div className="overflow-hidden w-full">
-          <div
-            className="flex w-full transition-transform duration-500 ease-out"
-            style={{ transform: `translateX(-${step * 100}%)` }}
-          >
-            {/* Step 0 — Phone */}
-            <div className="min-w-full shrink-0 flex flex-col justify-center min-h-screen px-1">
-              <div className="mb-10">
-                {/* <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-900 text-white mb-6">
-                  <Phone size={24} strokeWidth={1.75} />
-                </div> */}
-                <h1 className="text-3xl font-bold text-x-text tracking-tight">
-                  What's your number?
-                </h1>
-                <p className="text-x-text-secondary mt-2 text-[15px] leading-relaxed">
-                  Enter your mobile number and tap Next to continue.
-                </p>
-              </div>
-
-              <form onSubmit={handlePhoneNext} className="space-y-5">
-                <div className="flex gap-3">
-                  <div className="flex items-center justify-center px-4 py-3.5 rounded-full bg-x-bg-secondary text-x-text-secondary text-sm font-medium border border-x-border">
-                    +977
-                  </div>
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    placeholder="98XXXXXXXX"
-                    value={phone}
-                    onChange={(e) =>
-                      setPhone(e.target.value.replace(/\D/g, ""))
-                    }
-                    className="flex-1 px-5 py-3.5 rounded-full x-input"
-                    autoFocus
-                  />
-                </div>
-
-                {error && step === STEPS.PHONE && (
-                  <p className="text-red-500 text-sm px-2">{error}</p>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full x-btn x-btn-primary x-btn-full py-4"
-                >
-                  {loading ? (
-                    <Loader2 className="animate-spin" size={18} />
-                  ) : (
-                    <>
-                      Next <ArrowRight size={18} />
-                    </>
-                  )}
-                </button>
-              </form>
+      {/* Sliding panels — padding moved from the wrapper to the inner slides */}
+      <div className="flex-1 flex flex-col w-full max-w-md mx-auto overflow-hidden">
+        <div
+          className="flex w-full h-full transition-transform duration-500 ease-out"
+          style={{ transform: `translateX(-${step * 100}%)` }}
+        >
+          {/* Step 0 — Phone */}
+          <div className="w-full h-full shrink-0 flex flex-col justify-center px-4">
+            <div className="mb-10">
+              <h1 className="text-3xl font-bold text-x-text tracking-tight">
+                What's your number?
+              </h1>
+              <p className="text-x-text-secondary mt-2 text-[15px] leading-relaxed">
+                Enter your mobile number and tap Next to continue.
+              </p>
             </div>
 
-            {/* Step 1 — Name (new users only) */}
-            <div className="min-w-full shrink-0 flex flex-col justify-center min-h-screen px-1">
-              <div className="mb-10">
-                {/* <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-900 text-white mb-6">
-                  <User size={24} strokeWidth={1.75} />
-                </div> */}
-                <h1 className="text-3xl font-bold text-x-text tracking-tight">
-                  What should we call you?
-                </h1>
-                <p className="text-x-text-secondary mt-2 text-[15px] leading-relaxed">
-                  Enter your name to get started.
-                </p>
-              </div>
-
-              <form onSubmit={handleNameSubmit} className="space-y-5">
+            <form onSubmit={handlePhoneNext} className="space-y-5">
+              <div className="flex gap-3">
+                <div className="flex items-center justify-center px-4 py-3.5 rounded-full bg-x-bg-secondary text-x-text-secondary text-sm font-medium border border-x-border">
+                  +977
+                </div>
                 <input
-                  type="text"
-                  placeholder="Your full name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full x-input"
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="98XXXXXXXX"
+                  value={phone}
+                  onChange={(e) =>
+                    setPhone(e.target.value.replace(/\D/g, ""))
+                  }
+                  className="flex-1 px-5 py-3.5 rounded-full x-input"
+                  autoFocus
                 />
-
-                {error && step === STEPS.NAME && (
-                  <p className="text-red-500 text-sm px-2">{error}</p>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full x-btn x-btn-primary x-btn-full py-4"
-                >
-                  {loading ? (
-                    <Loader2 className="animate-spin" size={18} />
-                  ) : (
-                    <>
-                      Create account <ArrowRight size={18} />
-                    </>
-                  )}
-                </button>
-              </form>
-              {/* Back Button */}
-              <button
-                onClick={handleGoBack}
-                className={`mt-2 w-full x-btn x-btn-secondary py-4 ${
-                  step === STEPS.PHONE
-                    ? "opacity-0 pointer-events-none"
-                    : "opacity-100"
-                }`}
-              >
-                <ArrowLeft size={16} strokeWidth={2} />
-                Go Back
-              </button>
-            </div>
-
-            {/* Step 2 — Welcome */}
-            <div className="min-w-full shrink-0 flex flex-col justify-center min-h-screen px-1">
-              <div className="mb-10 text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-50 text-green-600 mb-6">
-                  <Sparkles size={28} strokeWidth={1.75} />
-                </div>
-                <h1 className="text-3xl font-bold text-x-text tracking-tight">
-                  {isReturningUser ? "Welcome back," : "Welcome,"}
-                </h1>
-                {displayName && (
-                  <p className="text-2xl font-bold text-x-text mt-2">
-                    {displayName}
-                  </p>
-                )}
-                <p className="text-x-text-secondary mt-4 text-[15px] leading-relaxed max-w-xs mx-auto">
-                  You're all set. Continue to explore and report civic issues in
-                  your community.
-                </p>
               </div>
 
+              {error && step === STEPS.PHONE && (
+                <p className="text-red-500 text-sm px-2">{error}</p>
+              )}
+
               <button
-                onClick={handleContinue}
+                type="submit"
+                disabled={loading}
                 className="w-full x-btn x-btn-primary x-btn-full py-4"
               >
-                Continue to home
-                <ArrowRight size={18} />
+                {loading ? (
+                  <Loader2 className="animate-spin" size={18} />
+                ) : (
+                  <>
+                    Next <ArrowRight size={18} />
+                  </>
+                )}
               </button>
-              
+            </form>
+          </div>
+
+          {/* Step 1 — Name (new users only) */}
+          <div className="w-full h-full shrink-0 flex flex-col justify-center px-4">
+            <div className="mb-10">
+              <h1 className="text-3xl font-bold text-x-text tracking-tight">
+                What should we call you?
+              </h1>
+              <p className="text-x-text-secondary mt-2 text-[15px] leading-relaxed">
+                Enter your name to get started.
+              </p>
             </div>
+
+            <form onSubmit={handleNameSubmit} className="space-y-5">
+              <input
+                type="text"
+                placeholder="Your full name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full x-input"
+              />
+
+              {error && step === STEPS.NAME && (
+                <p className="text-red-500 text-sm px-2">{error}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full x-btn x-btn-primary x-btn-full py-4"
+              >
+                {loading ? (
+                  <Loader2 className="animate-spin" size={18} />
+                ) : (
+                  <>
+                    Create account <ArrowRight size={18} />
+                  </>
+                )}
+              </button>
+            </form>
+            {/* Back Button */}
+            <button
+              onClick={handleGoBack}
+              className="mt-2 w-full x-btn x-btn-secondary py-4"
+            >
+              <ArrowLeft size={16} strokeWidth={2} />
+              Go Back
+            </button>
+          </div>
+
+          {/* Step 2 — Welcome */}
+          <div className="w-full h-full shrink-0 flex flex-col justify-center px-4">
+            <div className="mb-10 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-50 text-green-600 mb-6">
+                <Sparkles size={28} strokeWidth={1.75} />
+              </div>
+              <h1 className="text-3xl font-bold text-x-text tracking-tight">
+                {isReturningUser ? "Welcome back," : "Welcome,"}
+              </h1>
+              {displayName && (
+                <p className="text-2xl font-bold text-x-text mt-2">
+                  {displayName}
+                </p>
+              )}
+              <p className="text-x-text-secondary mt-4 text-[15px] leading-relaxed max-w-xs mx-auto">
+                You're all set. Continue to explore and report civic issues in
+                your community.
+              </p>
+            </div>
+
+            <button
+              onClick={handleContinue}
+              className="w-full x-btn x-btn-primary x-btn-full py-4"
+            >
+              Continue to home
+              <ArrowRight size={18} />
+            </button>
+            
+            {/* Added Back Button for Welcome Screen to hook into your handleGoBack logic */}
+            <button
+              onClick={handleGoBack}
+              className="mt-4 text-sm font-medium text-x-text-secondary hover:text-x-text transition-colors"
+            >
+              Not {displayName || "you"}? Go back
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="pb-10 pt-4 text-center">
+      <div className="pb-10 pt-4 shrink-0 text-center">
         <p className="text-xs text-x-text-secondary tracking-wide">
           CivicReport · Report. Track. Improve.
         </p>
