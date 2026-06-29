@@ -86,7 +86,11 @@ export default function PhoneAuth() {
       setUser(response.data.user);
       setIsAuthenticated(true);
 
-      navigate(response.data.user.verified ? "/" : "/signup");
+      // clear transient UI state before navigation to avoid overlapping UI
+      setPopup(null);
+      setConfirmation(null);
+      window.scrollTo(0, 0);
+      navigate(response.data.user.verified ? "/" : "/signup", { replace: true });
     } catch (err) {
       // alert(err.message);
       setPopup("Invalid OTP. Please try again.");

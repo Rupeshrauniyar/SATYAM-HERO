@@ -173,14 +173,14 @@ export default function Signinv2() {
       </div>
 
       {/* Sliding panels — overflow hidden only on the track wrapper */}
-      <div className="flex-1 flex flex-col justify-center w-full max-w-md mx-auto px">
+      <div className="flex-1 flex flex-col justify-center w-full max-w-md mx-auto px-4">
         <div className="overflow-hidden w-full">
           <div
             className="flex w-full transition-transform duration-500 ease-out"
             style={{ transform: `translateX(-${step * 100}%)` }}
           >
             {/* Step 0 — Phone */}
-            <div className="min-w-full shrink-0 flex flex-col justify-center min-h-[420px] px-1">
+            <div className="min-w-full shrink-0 flex flex-col justify-center min-h-screen px-1">
               <div className="mb-10">
                 {/* <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-900 text-white mb-6">
                   <Phone size={24} strokeWidth={1.75} />
@@ -232,7 +232,7 @@ export default function Signinv2() {
             </div>
 
             {/* Step 1 — Name (new users only) */}
-            <div className="min-w-full shrink-0 flex flex-col justify-center min-h-[420px] px-1">
+            <div className="min-w-full shrink-0 flex flex-col justify-center min-h-screen px-1">
               <div className="mb-10">
                 {/* <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-900 text-white mb-6">
                   <User size={24} strokeWidth={1.75} />
@@ -287,7 +287,7 @@ export default function Signinv2() {
             </div>
 
             {/* Step 2 — Welcome */}
-            <div className="min-w-full shrink-0 flex flex-col justify-center min-h-[420px] px-1">
+            <div className="min-w-full shrink-0 flex flex-col justify-center min-h-screen px-1">
               <div className="mb-10 text-center">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-50 text-green-600 mb-6">
                   <Sparkles size={28} strokeWidth={1.75} />
