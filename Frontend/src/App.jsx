@@ -1,4 +1,7 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import React, { useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from "react-router-dom";
+import { App as CapacitorApp } from "@capacitor/app";
+import { SplashScreen } from "@capacitor/splash-screen";
 
 import AppProvider from "./contexts/AppContext";
 
@@ -22,6 +25,7 @@ import Settings from "./pages/Settings";
 import Privacy from "./pages/Privacy";
 import Search from "./pages/Search";
 import Insights from "./pages/Insights";
+import EditProfile from "./pages/EditProfile";
 
 // gov pages
 import GovHome from "./pages_gov/GovHome";
@@ -38,10 +42,55 @@ import Notifications from "./pages/Notifications";
 import Signinv2 from "./pages/Signinv2";
 import Signup from "./pages/Signup";
 
+function AndroidBackHandler() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const backAction = () => {
+      const params = new URLSearchParams(location.search);
+      const hasOverlayParams = params.has("comments") || params.has("share") || params.has("report");
+
+      if (hasOverlayParams) {
+        params.delete("comments");
+        params.delete("share");
+        params.delete("report");
+        const search = params.toString();
+        navigate(`${location.pathname}${search ? `?${search}` : ""}`, { replace: true });
+        return;
+      }
+
+      if (location.pathname === "/") {
+        CapacitorApp.exitApp();
+      } else {
+        navigate(-1);
+      }
+    };
+
+    const listener = CapacitorApp.addListener("backButton", backAction);
+    return () => listener.remove();
+  }, [location, navigate]);
+
+  return null;
+}
+
 const App = () => {
+  useEffect(() => {
+    const hide = async () => {
+      try {
+        await SplashScreen.hide();
+      } catch (error) {
+        // ignore if plugin is unavailable
+      }
+    };
+
+    hide();
+  }, []);
+
   return (
     <AppProvider>
       <Router>
+        <AndroidBackHandler />
         <Routes>
           {/* USER APP */}
           <Route element={<UserMiddleware />}>
@@ -50,6 +99,7 @@ const App = () => {
               <Route path="/create" element={<Create />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/profile/edit" element={<EditProfile />} />
               <Route path="/settings" element={<Settings />} />
               {/* <Route path="/privacy" element={<PrivacyPolicy />} /> */}
               <Route path="/search" element={<Search />} />
@@ -69,6 +119,7 @@ const App = () => {
               <Route path="/gov/create" element={<GovCreate />} />
               <Route path="/gov/dashboard" element={<GovDashboard />} />
               <Route path="/gov/profile" element={<GovProfile />} />
+              <Route path="/gov/profile/edit" element={<EditProfile />} />
               <Route path="/gov/settings" element={<GovSettings />} />
               <Route path="/gov/alerts" element={<Alerts />} />
               <Route path="/gov/notifications" element={<Notifications />} />

@@ -20,12 +20,14 @@ const govReportRoutes = require("./Routes/govReportRoutes");
 const govRoutes = require("./Routes/govRoutes");
 const notificationRoutes = require("./Routes/notificationRoutes");
 const translateRoutes = require("./Routes/translateRoutes");
+const userRoutes = require("./Routes/userRoutes");
   
 app.use("/api/auth", authRoutes);
 app.use("/api/report", reportRoutes);
 app.use("/api/gov/post", govPostRoutes);
 app.use("/api/gov/report", govReportRoutes);
 app.use("/api/gov/", govRoutes);
+app.use("/api/user", userRoutes);
 app.use("/api/notification", notificationRoutes);
 app.use("/api/translate", translateRoutes);
 // // --- Keep Alive Function ---

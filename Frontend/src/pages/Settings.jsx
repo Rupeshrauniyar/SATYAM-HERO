@@ -2,6 +2,7 @@ import React, { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppContext } from "../contexts/AppContext";
 import { useTranslation } from "../utils/translations";
+import Avatar from "../components/Avatar";
 import {
   LogOut,
   ChevronRight,
@@ -43,9 +44,7 @@ export default function Settings() {
 
       <div className="p-4">
         <div className="x-panel mb-4 flex items-center gap-4">
-          <div className="x-avatar x-avatar-lg">
-            {user?.name?.trim()?.charAt(0)?.toUpperCase()}
-          </div>
+          <Avatar src={user?.profilePicture} label={user?.name || user?.phone_number || "User"} className="x-avatar x-avatar-lg" />
           <div>
             <p className="font-bold text-lg">{user?.name}</p>
             <p className="text-sm text-x-text-secondary">{user?.phone_number}</p>
@@ -60,7 +59,7 @@ export default function Settings() {
         </div>
 
         <div className="border border-x-border rounded-2xl overflow-hidden divide-y divide-x-border">
-          <SettingsItem icon={<User size={18} />} label={t("profile")} description={t("personalInformation")} onClick={() => navigate('/profile')} />
+          <SettingsItem icon={<User size={18} />} label={t("profile")} description={t("personalInformation")} onClick={() => navigate('/profile/edit')} />
           <SettingsItem icon={<Shield size={18} />} label={t("privacyAndSecurity")} description={t("permissions")} onClick={() => navigate('/privacy')} />
           <SettingsItem icon={<Bell size={18} />} label={t("notifications")} description={t("pushAndEmailAlerts")} onClick={() => navigate('/notifications')} />
           <div className="px-4 py-4 border-t border-x-border bg-x-bg/70">
@@ -77,7 +76,7 @@ export default function Settings() {
                   <button
                     key={mode}
                     onClick={() => setTheme(mode)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-semibold border ${theme === mode ? "bg-x-accent text-white border-x-accent" : "border-x-border text-x-text-secondary bg-x-bg"}`}
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold border ${theme === mode ? "bg-x-accent text-x-text-on-accent border-x-accent" : "border-x-border text-x-text-secondary bg-x-bg"}`}
                   >
                     {t(mode)}
                   </button>
@@ -113,10 +112,10 @@ export default function Settings() {
       {confirmLogout && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
           <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setConfirmLogout(false)}
           />
-          <div className="relative bg-x-bg rounded-2xl border border-x-border w-full max-w-sm p-6 animate-fadeIn">
+          <div className="relative bg-[var(--color-x-bg-elevated)] text-x-text rounded-2xl border border-x-border shadow-2xl shadow-black/20 w-full max-w-sm p-6 animate-fadeIn">
             <button
               onClick={() => setConfirmLogout(false)}
               className="absolute top-3 right-3 x-btn-ghost text-x-text-secondary"

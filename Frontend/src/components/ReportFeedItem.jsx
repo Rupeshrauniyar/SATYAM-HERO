@@ -10,6 +10,7 @@ import {
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination } from "swiper/modules";
 import EngagePill from "./EngagePill";
+import Avatar from "./Avatar";
 import axios from "axios";
 import { AppContext } from "../contexts/AppContext";
 import { useTranslation, translateText, getCachedTranslation, setCachedTranslation } from "../utils/translations";
@@ -44,6 +45,7 @@ export default function ReportFeedItem({
   const downvoteCount = Array.isArray(issue.downvotes) ? downvotes.length : issue.downvotesCount || 0;
   const userReports = user?.reports || [];
   const author = issue?.user || issue?.author || issue?.userId || issue?.authorId || {};
+  const authorPhoto = author?.profilePicture || author?.profile_picture || issue?.user?.profilePicture || issue?.user?.profile_picture || issue?.userId?.profilePicture || issue?.userId?.profile_picture || issue?.authorId?.profilePicture || issue?.authorId?.profile_picture;
   const authorName = (author?.name || issue?.user?.name || issue?.author?.name || issue?.userId?.name || issue?.authorId?.name || user?.name || "User").trim() || "User";
   const authorRole = author?.role || issue?.user?.role || issue?.author?.role || user?.role;
   const [voteState, setVoteState] = useState(() => ({
@@ -91,9 +93,7 @@ export default function ReportFeedItem({
         )}
 
         <div className="x-feed-card-header">
-          <div className="x-avatar">
-            {(authorName?.trim()?.charAt(0)?.toUpperCase()) || "?"}
-          </div>
+          <Avatar src={authorPhoto} label={authorName} className="x-avatar" />
           <div className="flex-1 min-w-0">
             <p className="font-bold text-[0.9375rem] truncate">
               {authorName}

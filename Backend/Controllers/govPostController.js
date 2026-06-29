@@ -92,8 +92,9 @@ const getGovUpdates = async (req, res) => {
           upvotes: 1,
           downvotes: 1,
           commentsCount: 1,
-          author: { name: "$author.name", role: "$author.role", _id: "$author._id" },
-          user: { name: "$author.name", role: "$author.role", _id: "$author._id" },
+          author: { name: "$author.name", role: "$author.role", _id: "$author._id", profilePicture: "$author.profilePicture" },
+          user: { name: "$author.name", role: "$author.role", _id: "$author._id", profilePicture: "$author.profilePicture" },
+          authorId: { name: "$author.name", role: "$author.role", _id: "$author._id", profilePicture: "$author.profilePicture" },
         },
       },
     ];

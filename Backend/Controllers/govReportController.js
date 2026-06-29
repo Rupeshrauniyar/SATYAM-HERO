@@ -8,8 +8,8 @@ const getMyWork = async (req, res) => {
 
     const reports = await Report.find({ changer: userId })
       .populate([
-        { path: "userId", select: "name role" },
-        { path: "changer", select: "name role" },
+        { path: "userId", select: "name role profilePicture" },
+        { path: "changer", select: "name role profilePicture" },
       ])
       .sort({ updatedAt: -1 });
 

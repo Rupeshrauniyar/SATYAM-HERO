@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { Loader2, Search as SearchIcon, ShieldCheck, UserRound, Users } from "lucide-react";
+import Avatar from "../components/Avatar";
 
 const GovUsers = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -78,12 +79,6 @@ const GovUsers = () => {
     return pendingAction === "promote" ? "Promote to Government" : "Demote to Citizen";
   }, [pendingAction]);
 
-  const getInitials = (name) => {
-    if (!name) return "?";
-    const parts = name.trim().split(" ");
-    if (parts.length === 1) return parts[0].trim().charAt(0).toUpperCase();
-    return (parts[0].trim().charAt(0) + parts[parts.length - 1].trim().charAt(0)).toUpperCase();
-  };
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--color-x-bg, #f8fafc)" }}>
@@ -320,26 +315,11 @@ const GovUsers = () => {
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
-                    <div
-                      style={{
-                        width: "40px",
-                        height: "40px",
-                        borderRadius: "12px",
-                        background: isGov
-                          ? "linear-gradient(135deg, var(--color-x-accent, #1d9bf0) 0%, #1d4ed8 100%)"
-                          : "linear-gradient(135deg, #94a3b8 0%, #64748b 100%)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "#ffffff",
-                        fontSize: "13px",
-                        fontWeight: "700",
-                        flexShrink: 0,
-                        letterSpacing: "0.5px",
-                      }}
-                    >
-                      {getInitials(user.name)}
-                    </div>
+                    <Avatar
+                      src={user.profilePicture}
+                      label={user.name || user.phone_number || "User"}
+                      className="w-10 h-10"
+                    />
                     <div style={{ minWidth: 0 }}>
                       <p
                         style={{

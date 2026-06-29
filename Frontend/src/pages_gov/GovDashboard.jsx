@@ -1,6 +1,7 @@
 import { Loader2, LayoutDashboard } from "lucide-react";
 import React, { useState, useEffect, useContext } from "react";
 import axios from "axios";
+import { useSearchParams } from "react-router-dom";
 import { applyOptimisticVote } from "../utils/voteHelpers";
 import { Link } from "react-router-dom";
 import "../styles.css";
@@ -12,17 +13,47 @@ import { AppContext } from "../contexts/AppContext";
 
 const GovDashboard = () => {
   const { user, setUser } = useContext(AppContext);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [issues, setIssues] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState({});
   const [selectedStatus, setSelectedStatus] = useState(null);
   const [confirmIssue, setConfirmIssue] = useState(null);
-  const [commentReport, setCommentReport] = useState(null);
-  const [insightsReport, setInsightsReport] = useState(null);
-  const [shareReport, setShareReport] = useState(null);
   const statuses = ["Pending", "Progress", "Resolved"];
   const token = localStorage.getItem("token");
+
+  const commentReportId = searchParams.get("comments");
+  const shareReportId = searchParams.get("share");
+  const insightsReportId = searchParams.get("insights");
+
+  const commentReport = commentReportId ? issues.find((i) => i._id === commentReportId) : null;
+  const shareReport = shareReportId ? issues.find((i) => i._id === shareReportId) : null;
+  const insightsReport = insightsReportId ? issues.find((i) => i._id === insightsReportId) : null;
+
+  const setCommentReport = (report) => {
+    if (report?._id) {
+      setSearchParams((prev) => { prev.set("comments", report._id); return prev; });
+    } else {
+      setSearchParams((prev) => { prev.delete("comments"); return prev; });
+    }
+  };
+
+  const setShareReport = (report) => {
+    if (report?._id) {
+      setSearchParams((prev) => { prev.set("share", report._id); return prev; });
+    } else {
+      setSearchParams((prev) => { prev.delete("share"); return prev; });
+    }
+  };
+
+  const setInsightsReport = (report) => {
+    if (report?._id) {
+      setSearchParams((prev) => { prev.set("insights", report._id); return prev; });
+    } else {
+      setSearchParams((prev) => { prev.delete("insights"); return prev; });
+    }
+  };
 
   const timeAgo = (date) => {
     const seconds = Math.floor((new Date() - new Date(date)) / 1000);
@@ -263,7 +294,7 @@ const GovDashboard = () => {
       {confirmIssue && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setConfirmIssue(null)} />
-          <div className="relative bg-x-bg rounded-2xl border border-x-border w-full max-w-sm p-6 animate-fadeIn">
+          <div className="relative bg-x-bg-elevated rounded-2xl border border-x-border w-full max-w-sm p-6 animate-fadeIn">
             <h3 className="text-lg font-bold mb-2">Confirm status change</h3>
             <p className="text-sm text-x-text-secondary mb-6">
               Change &ldquo;{confirmIssue.title}&rdquo; to <strong>{selectedStatus}</strong>?

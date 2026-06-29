@@ -1,4 +1,4 @@
-import { Loader2, MessageCircle, Search as SearchIcon } from "lucide-react";
+import { Loader2, MessageCircle, Search as SearchIcon, X } from "lucide-react";
 import React, { useState, useEffect, useContext, useRef, useMemo } from "react";
 import axios from "axios";
 import { AppContext } from "../contexts/AppContext";
@@ -22,20 +22,19 @@ function FeedTab({ active, label, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 relative py-3 text-[0.9375rem] font-medium transition-colors hover:bg-x-bg-hover cursor-pointer ${
-        active ? "text-x-text font-bold" : "text-x-text-secondary"
+      className={`relative px-4 py-2.5 text-sm font-medium transition-colors rounded-full cursor-pointer ${
+        active
+          ? "bg-x-accent text-x-text-on-accent"
+          : "text-x-text-secondary hover:text-x-text hover:bg-x-bg-hover"
       }`}
     >
       {label}
-      {active && (
-        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 rounded-full bg-x-accent" />
-      )}
     </button>
   );
 }
 
 const Home = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const sharedReportId = searchParams.get("report");
 
   const [feedTab, setFeedTab] = useState(FEED_TABS.PUBLIC);
@@ -48,14 +47,44 @@ const Home = () => {
   const [expanded, setExpanded] = useState({});
   const [selectedStatus, setSelectedStatus] = useState(null);
   const [confirmIssue, setConfirmIssue] = useState(null);
-  const [commentReport, setCommentReport] = useState(null);
-  const [insightsReport, setInsightsReport] = useState(null);
-  const [shareReport, setShareReport] = useState(null);
   const [searchInput, setSearchInput] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
   const { user, setUser } = useContext(AppContext);
   const sharedRef = useRef(null);
   const hasScrolled = useRef(false);
   const navigate = useNavigate();
+
+  const commentReportId = searchParams.get("comments");
+  const shareReportId = searchParams.get("share");
+  const insightsReportId = searchParams.get("insights");
+
+  const commentReport = commentReportId ? issues.find((i) => i._id === commentReportId) || pinnedReport : null;
+  const shareReport = shareReportId ? issues.find((i) => i._id === shareReportId) || pinnedReport : null;
+  const insightsReport = insightsReportId ? issues.find((i) => i._id === insightsReportId) || pinnedReport : null;
+
+  const setCommentReport = (report) => {
+    if (report?._id) {
+      setSearchParams((prev) => { prev.set("comments", report._id); return prev; });
+    } else {
+      setSearchParams((prev) => { prev.delete("comments"); return prev; });
+    }
+  };
+
+  const setShareReport = (report) => {
+    if (report?._id) {
+      setSearchParams((prev) => { prev.set("share", report._id); return prev; });
+    } else {
+      setSearchParams((prev) => { prev.delete("share"); return prev; });
+    }
+  };
+
+  const setInsightsReport = (report) => {
+    if (report?._id) {
+      setSearchParams((prev) => { prev.set("insights", report._id); return prev; });
+    } else {
+      setSearchParams((prev) => { prev.delete("insights"); return prev; });
+    }
+  };
 
   const timeAgo = (date) => {
     const seconds = Math.floor((new Date() - new Date(date)) / 1000);
@@ -107,7 +136,6 @@ const Home = () => {
 
         if (sharedReportId) {
           pinned = reports.find((r) => r._id === sharedReportId) || null;
-
           if (!pinned) {
             try {
               const single = await axios.get(
@@ -156,25 +184,19 @@ const Home = () => {
     const handleScroll = () => {
       if (loadingMore || !hasMore) return;
       const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 320;
-      if (nearBottom) {
-        loadMoreReports();
-      }
+      if (nearBottom) loadMoreReports();
     };
-
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [loadingMore, hasMore, page, feedTab, sharedReportId]);
 
   const loadMoreReports = async () => {
     if (loadingMore || !hasMore || sharedReportId) return;
-
     const nextPage = page + 1;
     setLoadingMore(true);
     try {
       const endpoint =
-        feedTab === FEED_TABS.PUBLIC
-          ? "/api/report/get"
-          : "/api/gov/post/updates";
+        feedTab === FEED_TABS.PUBLIC ? "/api/report/get" : "/api/gov/post/updates";
       const response = await axios.get(
         `${import.meta.env.VITE_BACKEND_URL}${endpoint}?page=${nextPage}&limit=3`,
       );
@@ -220,24 +242,16 @@ const Home = () => {
   };
 
   const updateIssueInState = (reportId, updater) => {
-    setIssues((prev) =>
-      prev.map((issue) => (issue._id === reportId ? updater(issue) : issue)),
-    );
-    setPinnedReport((prev) =>
-      prev?._id === reportId ? updater(prev) : prev,
-    );
+    setIssues((prev) => prev.map((issue) => (issue._id === reportId ? updater(issue) : issue)));
+    setPinnedReport((prev) => (prev?._id === reportId ? updater(prev) : prev));
   };
 
   const handleUpvote = async (e, role) => {
     if (!user) return;
-
     const resourceId = e;
     const hasUpvoted = (user.upvotes || []).some((up) => up.toString() === resourceId.toString());
     const hasDownvoted = (user.downvotes || []).some((down) => down.toString() === resourceId.toString());
-    const previousUserState = {
-      upvotes: user?.upvotes || [],
-      downvotes: user?.downvotes || [],
-    };
+    const previousUserState = { upvotes: user?.upvotes || [], downvotes: user?.downvotes || [] };
     const previousIssue = issues.find((issue) => issue._id === resourceId);
 
     setUser((prev) => {
@@ -246,7 +260,6 @@ const Home = () => {
       const nextDownvotes = [...(prev.downvotes || [])];
       const normalizedId = resourceId.toString();
       const hasExistingUpvote = nextUpvotes.some((up) => up.toString() === normalizedId);
-
       return {
         ...prev,
         upvotes: hasExistingUpvote
@@ -257,61 +270,35 @@ const Home = () => {
     });
 
     updateIssueInState(resourceId, (issue) =>
-      applyOptimisticVote({
-        issue,
-        userId: user?._id,
-        voteType: "up",
-        hasCurrentVote: hasUpvoted,
-        hasOppositeVote: hasDownvoted,
-      }),
+      applyOptimisticVote({ issue, userId: user?._id, voteType: "up", hasCurrentVote: hasUpvoted, hasOppositeVote: hasDownvoted }),
     );
 
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/report/upvote`,
-        { reportId: resourceId, token, method: hasUpvoted ? "pull" : "push", resourceType: role === "gov" ? "govPost" : "report" },
-      );
-
+      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/report/upvote`, {
+        reportId: resourceId, token, method: hasUpvoted ? "pull" : "push",
+        resourceType: role === "gov" ? "govPost" : "report",
+      });
       if (res.status === 200 && res.data.success) {
-        const nextUser = res.data.user || null;
-        const nextResource = res.data.resource || null;
-
-        if (nextUser) {
-          setUser((prev) => ({ ...(prev || {}), ...nextUser }));
-        }
-
-        if (nextResource) {
+        if (res.data.user) setUser((prev) => ({ ...(prev || {}), ...res.data.user }));
+        if (res.data.resource) {
           updateIssueInState(resourceId, (issue) => ({
-            ...issue,
-            upvotes: nextResource.upvotes || [],
-            downvotes: nextResource.downvotes || [],
+            ...issue, upvotes: res.data.resource.upvotes || [], downvotes: res.data.resource.downvotes || [],
           }));
         }
       }
     } catch (err) {
-      setUser((prev) => (prev ? { ...prev, upvotes: previousUserState.upvotes, downvotes: previousUserState.downvotes } : prev));
-      if (previousIssue) {
-        updateIssueInState(resourceId, (issue) => ({
-          ...issue,
-          upvotes: previousIssue.upvotes || [],
-          downvotes: previousIssue.downvotes || [],
-        }));
-      }
-      console.log(err);
+      setUser((prev) => (prev ? { ...prev, ...previousUserState } : prev));
+      if (previousIssue) updateIssueInState(resourceId, () => previousIssue);
     }
   };
 
   const handleDownvote = async (e, role) => {
     if (!user) return;
-
     const resourceId = e;
     const hasDownvoted = (user.downvotes || []).some((down) => down.toString() === resourceId.toString());
     const hasUpvoted = (user.upvotes || []).some((up) => up.toString() === resourceId.toString());
-    const previousUserState = {
-      upvotes: user?.upvotes || [],
-      downvotes: user?.downvotes || [],
-    };
+    const previousUserState = { upvotes: user?.upvotes || [], downvotes: user?.downvotes || [] };
     const previousIssue = issues.find((issue) => issue._id === resourceId);
 
     setUser((prev) => {
@@ -320,7 +307,6 @@ const Home = () => {
       const nextDownvotes = [...(prev.downvotes || [])];
       const normalizedId = resourceId.toString();
       const hasExistingDownvote = nextDownvotes.some((down) => down.toString() === normalizedId);
-
       return {
         ...prev,
         downvotes: hasExistingDownvote
@@ -331,102 +317,60 @@ const Home = () => {
     });
 
     updateIssueInState(resourceId, (issue) =>
-      applyOptimisticVote({
-        issue,
-        userId: user?._id,
-        voteType: "down",
-        hasCurrentVote: hasDownvoted,
-        hasOppositeVote: hasUpvoted,
-      }),
+      applyOptimisticVote({ issue, userId: user?._id, voteType: "down", hasCurrentVote: hasDownvoted, hasOppositeVote: hasUpvoted }),
     );
 
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/report/downvote`,
-        { reportId: resourceId, token, method: hasDownvoted ? "pull" : "push", resourceType: role === "gov" ? "govPost" : "report" },
-      );
-
+      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/report/downvote`, {
+        reportId: resourceId, token, method: hasDownvoted ? "pull" : "push",
+        resourceType: role === "gov" ? "govPost" : "report",
+      });
       if (res.status === 200 && res.data.success) {
-        const nextUser = res.data.user || null;
-        const nextResource = res.data.resource || null;
-
-        if (nextUser) {
-          setUser((prev) => ({ ...(prev || {}), ...nextUser }));
-        }
-
-        if (nextResource) {
+        if (res.data.user) setUser((prev) => ({ ...(prev || {}), ...res.data.user }));
+        if (res.data.resource) {
           updateIssueInState(resourceId, (issue) => ({
-            ...issue,
-            upvotes: nextResource.upvotes || [],
-            downvotes: nextResource.downvotes || [],
+            ...issue, upvotes: res.data.resource.upvotes || [], downvotes: res.data.resource.downvotes || [],
           }));
         }
       }
     } catch (err) {
-      setUser((prev) => (prev ? { ...prev, upvotes: previousUserState.upvotes, downvotes: previousUserState.downvotes } : prev));
-      if (previousIssue) {
-        updateIssueInState(resourceId, (issue) => ({
-          ...issue,
-          upvotes: previousIssue.upvotes || [],
-          downvotes: previousIssue.downvotes || [],
-        }));
-      }
-      console.log(err);
+      setUser((prev) => (prev ? { ...prev, ...previousUserState } : prev));
+      if (previousIssue) updateIssueInState(resourceId, () => previousIssue);
     }
   };
 
   const handleShared = (reportId) => {
-    updateIssueInState(reportId, (i) => ({
-      ...i,
-      shares: (i.shares || 0) + 1,
-    }));
+    updateIssueInState(reportId, (i) => ({ ...i, shares: (i.shares || 0) + 1 }));
   };
 
   const handleCommentAdded = (reportId, comment) => {
-    updateIssueInState(reportId, (issue) => ({
-      ...issue,
-      comments: [...(issue.comments || []), comment],
-    }));
+    updateIssueInState(reportId, (issue) => ({ ...issue, comments: [...(issue.comments || []), comment] }));
   };
 
   const handleCommentLiked = (reportId, updatedComment) => {
     updateIssueInState(reportId, (issue) => ({
       ...issue,
-      comments: (issue.comments || []).map((c) =>
-        c._id === updatedComment._id ? updatedComment : c,
-      ),
+      comments: (issue.comments || []).map((c) => (c._id === updatedComment._id ? updatedComment : c)),
     }));
   };
 
   const statusBadge = (status) => {
-    const map = {
-      Pending: "x-badge-pending",
-      Progress: "x-badge-progress",
-      Resolved: "x-badge-resolved",
-    };
+    const map = { Pending: "x-badge-pending", Progress: "x-badge-progress", Resolved: "x-badge-resolved" };
     return map[status] || "x-badge-pending";
   };
 
   const feedProps = {
-    user,
-    feedTab,
-    feedTabs: FEED_TABS,
-    expanded,
+    user, feedTab, feedTabs: FEED_TABS, expanded,
     onToggleDescription: toggleDescription,
-    timeAgo,
-    statusBadge,
-    onUpvote: handleUpvote,
-    onDownvote: handleDownvote,
-    onComment: setCommentReport,
-    onShare: setShareReport,
-    onInsights: setInsightsReport,
+    timeAgo, statusBadge,
+    onUpvote: handleUpvote, onDownvote: handleDownvote,
+    onComment: setCommentReport, onShare: setShareReport, onInsights: setInsightsReport,
     ...(user && user.role === "gov" ? { onChangeStatus: handleStatusChange } : {}),
   };
 
   const showEmpty =
-    !loading &&
-    !pinnedReport &&
+    !loading && !pinnedReport &&
     (sharedReportId ? otherReports.length === 0 : issues.length === 0);
 
   const showFeed =
@@ -441,73 +385,88 @@ const Home = () => {
 
   return (
     <div className="x-feed-column">
-      <div className="x-page-header">
-        <h1>Home</h1>
-      </div>
-
-     
-
-      <div className="x-feed-tabs">
-        <FeedTab
-          active={feedTab === FEED_TABS.PUBLIC}
-          label="Public"
-          onClick={() => setFeedTab(FEED_TABS.PUBLIC)}
-        />
-        <FeedTab
-          active={feedTab === FEED_TABS.AUTHORITY}
-          label="Authority"
-          onClick={() => setFeedTab(FEED_TABS.AUTHORITY)}
-        />
-      </div>
- <form onSubmit={handleSearchSubmit} className="mx-2 mt-4 rounded-full border border-x-border bg-x-bg-secondary px-3 py-3 shadow-sm">
-        <div className="flex items-center gap-2">
-          <SearchIcon size={18} className="text-x-text-secondary" />
-          <input
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="Search reports, wards, categories..."
-            className="flex-1 bg-transparent text-sm outline-none"
-          />
-          <button type="submit" className="x-btn x-btn-primary x-btn-sm">
-            Search
-          </button>
+      {/* ── Header ── */}
+      <div className="sticky top-[-10px] z-10 bg-x-bg/90 backdrop-blur-md border-b border-x-border">
+        {/* Title + tabs row */}
+        <div className="flex items-center justify-between px-4 pt-3 pb-1">
+          <h1 className="text-base font-semibold text-x-text">Home</h1>
+          <div className="flex items-center gap-1 bg-x-bg-secondary rounded-full p-0.5 border border-x-border">
+            <FeedTab
+              active={feedTab === FEED_TABS.PUBLIC}
+              label="Public"
+              onClick={() => setFeedTab(FEED_TABS.PUBLIC)}
+            />
+            <FeedTab
+              active={feedTab === FEED_TABS.AUTHORITY}
+              label="Authority"
+              onClick={() => setFeedTab(FEED_TABS.AUTHORITY)}
+            />
+          </div>
         </div>
-      </form>
+
+        {/* Search */}
+        <form onSubmit={handleSearchSubmit} className="px-4 pb-3 pt-2">
+          <div className={`flex items-center gap-2 rounded-full border bg-x-bg-secondary px-3 py-2 transition-colors ${searchFocused ? "border-x-accent" : "border-x-border"}`}>
+            <SearchIcon size={15} className="text-x-text-secondary shrink-0" />
+            <input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+              placeholder="Search reports, wards, categories..."
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-x-text-secondary"
+            />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => setSearchInput("")}
+                className="text-x-text-secondary hover:text-x-text transition-colors"
+              >
+                <X size={14} />
+              </button>
+            )}
+            {searchInput && (
+              <button type="submit" className="x-btn x-btn-primary x-btn-sm text-xs py-1 px-3 shrink-0">
+                Go
+              </button>
+            )}
+          </div>
+        </form>
+      </div>
+
+      {/* ── Status change confirm modal ── */}
       {confirmIssue && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setConfirmIssue(null)} />
-          <div className="relative bg-x-bg rounded-2xl border border-x-border w-full max-w-sm p-6 animate-fadeIn">
-            <h3 className="text-lg font-bold mb-2">Confirm status change</h3>
-            <p className="text-sm text-x-text-secondary mb-6">
-              Change &ldquo;{confirmIssue.title}&rdquo; to <strong>{selectedStatus}</strong>?
+          <div className="relative bg-x-bg-elevated rounded-2xl border border-x-border w-full max-w-sm p-5 animate-fadeIn">
+            <h3 className="text-sm font-semibold mb-1">Confirm status change</h3>
+            <p className="text-xs text-x-text-secondary mb-5">
+              Set &ldquo;{confirmIssue.title}&rdquo; to <strong>{selectedStatus}</strong>?
             </p>
-            <div className="flex gap-3">
-              <button onClick={() => setConfirmIssue(null)} className="x-btn x-btn-secondary flex-1">Cancel</button>
-              <button onClick={saveStatusChange} className="x-btn x-btn-accent flex-1">Save</button>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmIssue(null)} className="x-btn x-btn-secondary x-btn-sm flex-1 text-xs">Cancel</button>
+              <button onClick={saveStatusChange} className="x-btn x-btn-accent x-btn-sm flex-1 text-xs">Save</button>
             </div>
           </div>
         </div>
       )}
 
+      {/* ── Feed body ── */}
       {loading ? (
-        <div className="flex items-center justify-center py-32">
-          <Loader2 className="animate-spin text-x-accent" size={28} />
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="animate-spin text-x-accent" size={24} />
         </div>
       ) : showEmpty ? (
-        <div className="flex flex-col items-center justify-center py-24 px-6 text-center">
-          <MessageCircle
-            size={48}
-            className="text-x-text-secondary mb-4"
-            strokeWidth={1.25}
-          />
-          <h3 className="text-xl font-bold mb-2">
+        <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+          <MessageCircle size={36} className="text-x-text-secondary mb-3 opacity-40" strokeWidth={1.5} />
+          <p className="text-sm font-medium text-x-text mb-1">
             {sharedReportId && !pinnedReport
-              ? "Shared report not found"
+              ? "Report not found"
               : feedTab === FEED_TABS.PUBLIC
-                ? "No issues reported yet"
+                ? "No issues yet"
                 : "No authority updates yet"}
-          </h3>
-          <p className="text-x-text-secondary text-sm mb-6 max-w-xs">
+          </p>
+          <p className="text-xs text-x-text-secondary max-w-xs mb-5">
             {sharedReportId && !pinnedReport
               ? "This link may be invalid or the report was removed."
               : feedTab === FEED_TABS.PUBLIC
@@ -515,25 +474,22 @@ const Home = () => {
                 : "Issues handled or updated by authorities will appear here."}
           </p>
           {feedTab === FEED_TABS.PUBLIC && !sharedReportId && (
-            <Link to="/create" className="x-btn x-btn-primary">
-              Report an Issue
+            <Link to="/create" className="x-btn x-btn-primary x-btn-sm text-sm">
+              Report an issue
             </Link>
           )}
         </div>
       ) : showFeed ? (
-        <>
+        <div className="divide-y divide-x-border">
           {pinnedReport && sharedReportId && (
-            <ReportFeedItem
-              {...feedProps}
-              issue={pinnedReport}
-              featured
-              innerRef={sharedRef}
-            />
+            <ReportFeedItem {...feedProps} issue={pinnedReport} featured innerRef={sharedRef} />
           )}
 
           {sharedReportId && pinnedReport && otherReports.length > 0 && (
-            <div className="x-feed-divider">
-              <span>More reports</span>
+            <div className="flex items-center gap-3 px-4 py-2">
+              <div className="h-px flex-1 bg-x-border" />
+              <span className="text-[11px] text-x-text-secondary font-medium">More reports</span>
+              <div className="h-px flex-1 bg-x-border" />
             </div>
           )}
 
@@ -542,11 +498,17 @@ const Home = () => {
           ))}
 
           {loadingMore && (
-            <div className="flex justify-center py-6">
-              <Loader2 className="animate-spin text-x-accent" size={24} />
+            <div className="flex justify-center py-5">
+              <Loader2 className="animate-spin text-x-accent" size={20} />
             </div>
           )}
-        </>
+
+          {!hasMore && !loadingMore && issues.length > 0 && (
+            <p className="text-center text-xs text-x-text-secondary py-5">
+              You're all caught up
+            </p>
+          )}
+        </div>
       ) : null}
 
       <CommentSheet
@@ -558,19 +520,8 @@ const Home = () => {
         user={user}
         resourceType={feedTab === FEED_TABS.AUTHORITY ? "govPost" : "report"}
       />
-
-      <InsightsSheet
-        report={insightsReport}
-        open={!!insightsReport}
-        onClose={() => setInsightsReport(null)}
-      />
-
-      <ShareSheet
-        report={shareReport}
-        open={!!shareReport}
-        onClose={() => setShareReport(null)}
-        onShared={handleShared}
-      />
+      <InsightsSheet report={insightsReport} open={!!insightsReport} onClose={() => setInsightsReport(null)} />
+      <ShareSheet report={shareReport} open={!!shareReport} onClose={() => setShareReport(null)} onShared={handleShared} />
     </div>
   );
 };

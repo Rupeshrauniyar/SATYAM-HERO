@@ -2,6 +2,7 @@ import React, { useContext, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { AppContext } from "../contexts/AppContext";
 import { useTranslation } from "../utils/translations";
+import Avatar from "../components/Avatar";
 import {
   Home,
   LayoutDashboard,
@@ -121,18 +122,17 @@ style={{ height: "var(--topbar-h)", background: "var(--color-x-bg)" }}
             to={isGov ? "/gov" : "/"}
             className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
           >
-            <div className="w-8 h-8 rounded-full  flex items-center justify-center"
-            style={{ background: "var(--color-x-accent)" }}
-            >
-              <Feather size={16} className="text-x-text-on-accent" strokeWidth={2.5} />
-            </div>
+            <img 
+              src="/Logo.jpeg" 
+              alt="CivicReport Logo"
+              className="w-8 h-8 rounded-full object-cover"
+            />
             <span className="text-xl font-bold tracking-tight hidden sm:block">
               {isGov ? "CivicReport Gov" : "CivicReport"}
             </span>
-               <span className="text-xl font-bold tracking-tight sm:hidden block">
+            <span className="text-xl font-bold tracking-tight sm:hidden block">
               {isGov ? "Gov" : "CR"}
             </span>
-
           </Link>
 
           {/* <form onSubmit={handleSearchSubmit} className="hidden sm:flex items-center gap-2 border border-x-border rounded-full px-3 py-1 bg-white">
@@ -151,7 +151,7 @@ style={{ height: "var(--topbar-h)", background: "var(--color-x-bg)" }}
               type="button"
               className="inline-flex items-center gap-2 rounded-full border border-x-border bg-x-bg-secondary px-3 py-2 text-sm text-x-text"
             >
-              <Globe size={16} />
+              {/* <Globe size={16} /> */}
               {language === "en" ? t("nepali") : t("english")}
             </button>
 
@@ -183,9 +183,7 @@ style={{ height: "var(--topbar-h)", background: "var(--color-x-bg)" }}
                 to={isGov ? "/gov/profile" : "/profile"}
                 className="flex items-center gap-2 hover:bg-x-bg-hover rounded-full pl-1 pr-3 py-1 transition-colors"
               >
-                <div className="x-avatar w-8 h-8 text-sm">
-                  {user.name?.charAt(0)?.toUpperCase() || "U"}
-                </div>
+                <Avatar src={user.profilePicture || user.profile_picture} label={user.name || user.phone_number || "User"} className="w-8 h-8" />
                 <span className="text-sm font-bold hidden sm:block">
                   {user.name?.split(" ")[0]}
                 </span>
@@ -275,9 +273,7 @@ style={{ height: "var(--topbar-h)", background: "var(--color-x-bg)" }}
             {user && (
               <div className="x-panel">
                 <div className="flex items-center gap-3">
-                  <div className="x-avatar">
-                    {((user.name || "").trim().charAt(0) || "U").toUpperCase()}
-                  </div>
+                  <Avatar src={user.profilePicture} label={user.name || user.phone_number || "User"} className="x-avatar" />
                   <div className="min-w-0">
                     <p className="font-bold truncate">{(user.name || "").trim() || (user.phone_number ? `User ${user.phone_number.slice(-4)}` : "User")}</p>
                     <p className="text-x-text-secondary text-sm truncate">

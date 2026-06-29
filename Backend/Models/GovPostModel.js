@@ -33,11 +33,7 @@ const govPostSchema = new mongoose.Schema(
         type: String,
       },
     ],
-    status: {
-      type: String,
-      enum: ["Pending", "Progress", "Resolved"],
-      default: "Pending",
-    },
+   
     upvotes: [
       {
         type: mongoose.Schema.Types.ObjectId,

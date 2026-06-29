@@ -1,6 +1,7 @@
 import React, { useContext } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { AppContext } from "../contexts/AppContext";
+import Avatar from "./Avatar";
 import { useTranslation } from "../utils/translations";
 import {
   Book,
@@ -61,10 +62,12 @@ const Navbar = () => {
           {/* Right section */}
           <nav className="flex items-center gap-6">
             {user ? (
-              <div className="flex items-center">
-                <span className="text-sm text-x-text-secondary bg-x-bg-secondary rounded-full p-1">
-                  <User2 size={20} className="text-x-text" />
-                </span>
+              <div className="flex items-center gap-2">
+                <Avatar
+                  src={user?.profilePicture}
+                  label={user?.name || user?.phone_number || "User"}
+                  className="w-9 h-9"
+                />
                 <p className="ml-1 text-x-text">{user?.name?.split(" ")[0]}</p>
               </div>
             ) : (

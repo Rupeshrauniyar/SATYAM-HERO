@@ -4,6 +4,7 @@ import { AppContext } from "../contexts/AppContext";
 import { useTranslation } from "../utils/translations";
 import axios from "axios";
 import { Link } from "react-router-dom";
+import Avatar from "../components/Avatar";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import "swiper/css/pagination";
@@ -96,7 +97,7 @@ const Dashboard = () => {
       {deleteTarget && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
-          <div className="relative bg-x-bg rounded-2xl border border-x-border w-full max-w-sm p-6 animate-fadeIn">
+          <div className="relative bg-x-bg-elevated rounded-2xl border border-x-border w-full max-w-sm p-6 animate-fadeIn">
             <h3 className="text-lg font-bold mb-2">{t("deleteReportQuestion")}</h3>
             <p className="text-sm text-x-text-secondary mb-6">{t("deleteActionConfirm")}</p>
             <div className="flex gap-3">
@@ -142,7 +143,11 @@ const Dashboard = () => {
           return (
             <article key={issue._id} className="x-feed-item">
               <div className="flex gap-3">
-                <div className="x-avatar">{issue.userId.name?.trim()?.charAt(0)?.toUpperCase()}</div>
+                <Avatar
+                  src={issue.userId.profilePicture || issue.userId.profile_picture}
+                  label={issue.userId.name || "User"}
+                  className="x-avatar"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1 flex-wrap">

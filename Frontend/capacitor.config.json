@@ -1,5 +1,14 @@
 {
   "appId": "com.civicreport.app",
   "appName": "CivicReport",
-  "webDir": "dist"
+  "webDir": "dist",
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "launchAutoHide": true,
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "backgroundColor": "#ffffff"
+    }
+  }
 }

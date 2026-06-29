@@ -1,8 +1,10 @@
 import React, { useContext, useEffect, useState } from "react";
 import axios from "axios";
+import { useSearchParams } from "react-router-dom";
 import { applyOptimisticVote } from "../utils/voteHelpers";
 import { CheckCircle, Loader2, XCircle } from "lucide-react";
 import { AppContext } from "../contexts/AppContext";
+import Avatar from "../components/Avatar";
 import ReportFeedItem from "../components/ReportFeedItem";
 import CommentSheet from "../components/CommentSheet";
 import InsightsSheet from "../components/InsightsSheet";
@@ -29,6 +31,7 @@ function FeedTab({ active, label, onClick }) {
 
 export default function GovProfile() {
   const { user, setUser } = useContext(AppContext);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [feedTab, setFeedTab] = useState(user?.role === "gov" ? FEED_TABS.AUTHORITY : FEED_TABS.ALERTS);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,9 +40,38 @@ export default function GovProfile() {
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [commentReport, setCommentReport] = useState(null);
-  const [insightsReport, setInsightsReport] = useState(null);
-  const [shareReport, setShareReport] = useState(null);
+
+  const commentReportId = searchParams.get("comments");
+  const shareReportId = searchParams.get("share");
+  const insightsReportId = searchParams.get("insights");
+
+  const commentReport = commentReportId ? posts.find((p) => p._id === commentReportId) : null;
+  const shareReport = shareReportId ? posts.find((p) => p._id === shareReportId) : null;
+  const insightsReport = insightsReportId ? posts.find((p) => p._id === insightsReportId) : null;
+
+  const setCommentReport = (report) => {
+    if (report?._id) {
+      setSearchParams((prev) => { prev.set("comments", report._id); return prev; });
+    } else {
+      setSearchParams((prev) => { prev.delete("comments"); return prev; });
+    }
+  };
+
+  const setShareReport = (report) => {
+    if (report?._id) {
+      setSearchParams((prev) => { prev.set("share", report._id); return prev; });
+    } else {
+      setSearchParams((prev) => { prev.delete("share"); return prev; });
+    }
+  };
+
+  const setInsightsReport = (report) => {
+    if (report?._id) {
+      setSearchParams((prev) => { prev.set("insights", report._id); return prev; });
+    } else {
+      setSearchParams((prev) => { prev.delete("insights"); return prev; });
+    }
+  };
 
   if (!user) {
     return (
@@ -330,9 +362,7 @@ export default function GovProfile() {
     <div>
       <div className="h-32 bg-x-bg-secondary border-b border-x-border" />
       <div className="px-4 pb-6">
-        <div className="x-avatar x-avatar-lg w-24 h-24 text-3xl border-4 border-x-bg -mt-12 mb-4">
-          {((user.name || "").trim().charAt(0) || "U").toUpperCase()}
-        </div>
+        <Avatar src={user.profilePicture} label={user.name || user.phone_number || "User"} className="x-avatar x-avatar-lg w-24 h-24 border-4 border-x-bg -mt-12 mb-4" />
         <h1 className="text-xl font-bold">{(user.name || "").trim() || (user.phone_number ? `User ${user.phone_number.slice(-4)}` : "User")}</h1>
         <p className="text-x-text-secondary text-sm">{user.phone_number ? `+977 ${user.phone_number}` : "No phone number"}</p>
         <span className="inline-block mt-2 x-badge x-badge-progress">Government Official</span>
@@ -368,7 +398,7 @@ export default function GovProfile() {
         {deleteTarget && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
-            <div className="relative bg-x-bg rounded-2xl border border-x-border w-full max-w-sm p-6 animate-fadeIn">
+            <div className="relative bg-x-bg-elevated rounded-2xl border border-x-border w-full max-w-sm p-6 animate-fadeIn">
               <h3 className="text-lg font-bold mb-2">Delete post?</h3>
               <p className="text-sm text-x-text-secondary mb-6">This action cannot be undone.</p>
               <div className="flex gap-3">

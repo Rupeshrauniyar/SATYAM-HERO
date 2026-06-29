@@ -63,6 +63,10 @@ const userSchema = new mongoose.Schema(
       default: "user",
       enum: ["user", "gov"],
     },
+    profilePicture: {
+      type: String,
+      required: false,
+    },
   },
   { timestamps: true },
 );

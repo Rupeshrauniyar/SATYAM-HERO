@@ -9,10 +9,10 @@ const { extractToken } = require("../Utils/authUtils");
 const jwt = require("jsonwebtoken");
 
 const reportPopulate = [
-  { path: "userId changer", select: "name role" },
+  { path: "userId changer", select: "name role profilePicture" },
   { path: "comments.userId", select: "name" },
 ];
-const govPostPopulate = [{ path: "authorId", select: "name role" }];
+const govPostPopulate = [{ path: "authorId", select: "name role profilePicture" }];
 
 const createNotification = async ({ userId, reportId, sourceUserId, type, message, commentId, replyId }) => {
   if (!userId || !message) return;
@@ -41,6 +41,54 @@ const normalizeComments = (comments = [], includeReplies = false) => {
   });
 }; 
 
+const escapeRegExp = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const checkDuplicateReport = async (req, res) => {
+  try {
+    const { formData } = req.body;
+    const category = String(formData?.category || "").trim();
+    const ward = Number(formData?.ward);
+
+    if (!category || Number.isNaN(ward)) {
+      return res.status(400).json({ success: false, message: "Missing required data" });
+    }
+
+    const duplicateReport = await Report.findOne({
+      postType: "issue",
+      ward_number: ward,
+      category: { $regex: new RegExp(`^${escapeRegExp(category)}$`, "i") },
+    })
+      .sort({ createdAt: -1 })
+      .populate("userId", "name role profilePicture")
+      .lean();
+
+    if (!duplicateReport) {
+      return res.status(200).json({ success: true, duplicate: false });
+    }
+
+    return res.status(200).json({
+      success: true,
+      duplicate: true,
+      duplicateReport: {
+        _id: duplicateReport._id,
+        title: duplicateReport.title,
+        description: duplicateReport.description,
+        category: duplicateReport.category,
+        ward_number: duplicateReport.ward_number,
+        status: duplicateReport.status,
+        upvotes: duplicateReport.upvotes?.length || 0,
+        downvotes: duplicateReport.downvotes?.length || 0,
+        comments: duplicateReport.comments?.length || 0,
+        createdAt: duplicateReport.createdAt,
+        user: duplicateReport.userId,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: "Failed to check duplicates" });
+  }
+};
+
 const createReport = async (req, res) => {
   try {
     if (req.user.role === "gov") {
@@ -50,15 +98,52 @@ const createReport = async (req, res) => {
       });
     }
 
-    const { formData, media } = req.body;
+    const { formData, media, forceCreate } = req.body;
     const userId = req.user._id;
+    const category = String(formData?.category || "").trim();
+    const ward = Number(formData?.ward);
+
+    if (!formData?.title || !category || Number.isNaN(ward)) {
+      return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
+
+    if (!forceCreate) {
+      const duplicateReport = await Report.findOne({
+        postType: "issue",
+        ward_number: ward,
+        category: { $regex: new RegExp(`^${escapeRegExp(category)}$`, "i") },
+      })
+        .sort({ createdAt: -1 })
+        .populate("userId", "name role profilePicture")
+        .lean();
+
+      if (duplicateReport) {
+        return res.status(200).json({
+          success: true,
+          duplicate: true,
+          duplicateReport: {
+            _id: duplicateReport._id,
+            title: duplicateReport.title,
+            description: duplicateReport.description,
+            category: duplicateReport.category,
+            ward_number: duplicateReport.ward_number,
+            status: duplicateReport.status,
+            upvotes: duplicateReport.upvotes?.length || 0,
+            downvotes: duplicateReport.downvotes?.length || 0,
+            comments: duplicateReport.comments?.length || 0,
+            createdAt: duplicateReport.createdAt,
+            user: duplicateReport.userId,
+          },
+        });
+      }
+    }
 
     const newReport = await Report.create({
       title: formData.title,
       description: formData.description,
-      category: formData.category,
+      category: category,
       postType: "issue",
-      ward_number: formData.ward,
+      ward_number: ward,
       userId,
       media,
     });
@@ -125,7 +210,8 @@ const getReport = async (req, res) => {
           upvotesCount: 1,
           downvotesCount: 1,
           commentsCount: 1,
-          user: { name: "$user.name", role: "$user.role", _id: "$user._id" },
+          userId: { name: "$user.name", role: "$user.role", _id: "$user._id", profilePicture: "$user.profilePicture" },
+          user: { name: "$user.name", role: "$user.role", _id: "$user._id", profilePicture: "$user.profilePicture" },
         },
       },
     ];
@@ -237,7 +323,7 @@ const getAuthorityReports = async (req, res) => {
       },
       { $lookup: { from: "users", localField: "authorId", foreignField: "_id", as: "author" } },
       { $unwind: { path: "$author", preserveNullAndEmptyArrays: true } },
-      { $project: { title: 1, body: 1, createdAt: 1, updatedAt: 1, media: 1, commentsCount: 1, author: { name: "$author.name", role: "$author.role", _id: "$author._id" } } },
+      { $project: { title: 1, body: 1, createdAt: 1, updatedAt: 1, media: 1, commentsCount: 1, author: { name: "$author.name", role: "$author.role", _id: "$author._id", profilePicture: "$author.profilePicture" } } },
     ];
 
     const [updates, total] = await Promise.all([
@@ -266,7 +352,7 @@ const getAlerts = async (req, res) => {
       { $project: { title: 1, body: 1, createdAt: 1, media: 1, authorId: 1, commentsCount: { $size: { $ifNull: ["$comments", []] } } } },
       { $lookup: { from: "users", localField: "authorId", foreignField: "_id", as: "author" } },
       { $unwind: { path: "$author", preserveNullAndEmptyArrays: true } },
-      { $project: { title: 1, body: 1, createdAt: 1, media: 1, commentsCount: 1, author: { name: "$author.name", role: "$author.role", _id: "$author._id" } } },
+      { $project: { title: 1, body: 1, createdAt: 1, media: 1, commentsCount: 1, author: { name: "$author.name", role: "$author.role", _id: "$author._id", profilePicture: "$author.profilePicture" } } },
     ];
 
     const [alerts, total] = await Promise.all([
@@ -293,9 +379,9 @@ const getComments = async (req, res) => {
       return res.status(404).json({ success: false, message: "Report not found" });
     }
 
-    await resource.populate({ path: "comments.userId", select: "name -_id" });
+    await resource.populate({ path: "comments.userId", select: "name role profilePicture -_id" });
     if (includeReplies === "true" || includeReplies === "1") {
-      await resource.populate({ path: "comments.replies.userId", select: "name -_id" });
+      await resource.populate({ path: "comments.replies.userId", select: "name role profilePicture -_id" });
     }
 
     res.status(200).json({ success: true, comments: normalizeComments(resource.comments, includeReplies === "true" || includeReplies === "1") });
@@ -322,7 +408,7 @@ const getCommentReplies = async (req, res) => {
       return res.status(404).json({ success: false, message: "Comment not found" });
     }
 
-    await resource.populate({ path: "comments.replies.userId", select: "name -_id" });
+    await resource.populate({ path: "comments.replies.userId", select: "name profilePicture -_id" });
     const updatedComment = resource.comments.id(commentId);
 
     res.status(200).json({ success: true, replies: updatedComment.replies || [] });
@@ -714,7 +800,7 @@ const getMyReport = async (req, res) => {
 
     const reports = await Report.find({ userId })
       .sort({ createdAt: -1 })
-      .populate("userId", "name role")
+      .populate("userId", "name role profilePicture")
       .lean();
 
     const includeRecent = req.query.recent === "1";
@@ -893,6 +979,7 @@ const updateStatus = async (req, res) => {
 const editReport = async (req, res) => {};
 module.exports = {
   createReport,
+  checkDuplicateReport,
   getReport,
   getReportById,
   getAuthorityReports,

@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { AppContext } from "../contexts/AppContext";
 
 export default function CreateIssue() {
-  const { setUser } = useContext(AppContext);
+  const { user, setUser, resolvedTheme } = useContext(AppContext);
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -18,7 +18,10 @@ export default function CreateIssue() {
 
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
   const [error, setError] = useState("");
+  const [duplicateReport, setDuplicateReport] = useState(null);
+  const [pendingPayload, setPendingPayload] = useState(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -45,33 +48,11 @@ export default function CreateIssue() {
 
     try {
       setLoading(true);
-      const uploadedUrls = [];
-
-      for (const img of images) {
-        const compressed = await imageCompression(img, {
-          maxSizeMB: 1,
-          maxWidthOrHeight: 1024,
-          useWebWorker: true,
-        });
-
-        const imgData = new FormData();
-        imgData.append("file", compressed);
-        imgData.append("upload_preset", "CivicReportUnsignedSecurePreset");
-        imgData.append("folder", "reports");
-
-        const res = await fetch(
-          "https://api.cloudinary.com/v1_1/dpr75yj54/image/upload",
-          { method: "POST", body: imgData },
-        );
-
-        const data = await res.json();
-        if (data.secure_url) uploadedUrls.push(data.secure_url);
-      }
-
       const token = localStorage.getItem("token");
-      const response = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/report/create`,
-        { formData, media: uploadedUrls },
+
+      const previewResponse = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/report/check-duplicate`,
+        { formData },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -79,19 +60,138 @@ export default function CreateIssue() {
         },
       );
 
-      if (response.status === 200) {
-        setUser((prev) => ({
-          ...prev,
-          reports: [...(prev.reports || []), response.data.newReport._id],
-        }));
-        navigate("/");
+      if (previewResponse.status === 200 && previewResponse.data.duplicate) {
+        setPendingPayload({ formData: { ...formData }, media: images });
+        setDuplicateReport(previewResponse.data.duplicateReport);
+        return;
       }
-    } catch {
+
+      await submitReport({ formData, images, token });
+    } catch (err) {
+      console.error(err);
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
   };
+
+  const uploadImages = async (selectedImages) => {
+    const uploadedUrls = [];
+
+    for (const img of selectedImages) {
+      const compressed = await imageCompression(img, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1024,
+        useWebWorker: true,
+      });
+
+      const imgData = new FormData();
+      imgData.append("file", compressed);
+      imgData.append("upload_preset", "CivicReportUnsignedSecurePreset");
+      imgData.append("folder", "reports");
+
+      const res = await fetch(
+        "https://api.cloudinary.com/v1_1/dpr75yj54/image/upload",
+        { method: "POST", body: imgData },
+      );
+
+      const data = await res.json();
+      if (data.secure_url) uploadedUrls.push(data.secure_url);
+    }
+
+    return uploadedUrls;
+  };
+
+  const submitReport = async ({ formData, images, token, forceCreate = false }) => {
+    try {
+      setLoading(true);
+      const uploadedUrls = await uploadImages(images);
+      const response = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/report/create`,
+        { formData, media: uploadedUrls, forceCreate },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (response.status === 200 && response.data.newReport) {
+        setUser((prev) => ({
+          ...prev,
+          reports: [...(prev.reports || []), response.data.newReport._id],
+        }));
+        navigate("/");
+      } else if (response.status === 200 && response.data.duplicate) {
+        setPendingPayload({ formData: { ...formData }, media: images });
+        setDuplicateReport(response.data.duplicateReport);
+      } else {
+        setError("Could not create report. Please try again.");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateAnyway = async () => {
+    if (!pendingPayload) return;
+    setModalLoading(true);
+    setError("");
+
+    try {
+      const token = localStorage.getItem("token");
+      await submitReport({ formData: pendingPayload.formData, images: pendingPayload.media, token, forceCreate: true });
+      setDuplicateReport(null);
+      setPendingPayload(null);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const handleEndorseReport = async () => {
+    if (!duplicateReport) return;
+    setModalLoading(true);
+    setError("");
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/report/upvote`,
+        {
+          reportId: duplicateReport._id,
+          method: "push",
+          resourceType: "report",
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (response.data.success) {
+        if (response.data.user) {
+          setUser((prev) => ({ ...(prev || {}), ...response.data.user }));
+        }
+        navigate("/");
+      } else {
+        setError("Could not endorse this report. Please try again.");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Could not endorse this report. Please try again.");
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const isDarkMode = resolvedTheme === "dark";
+  const isDuplicateMine = duplicateReport?.user?._id?.toString() === user?._id?.toString();
 
   return (
     <div>
@@ -215,6 +315,82 @@ export default function CreateIssue() {
           </button>
         </form>
       </div>
+
+      {duplicateReport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setDuplicateReport(null)}
+          />
+          <div className="relative w-full max-w-lg rounded-[1.75rem] border border-x-border bg-x-bg-elevated p-6 shadow-2xl shadow-black/20 animate-fadeIn">
+            <div className="flex items-start gap-3">
+              <div className={`flex h-12 w-12 items-center justify-center rounded-3xl ${resolvedTheme === "dark" ? "bg-slate-800 text-slate-100" : "bg-slate-100 text-slate-900"}`}>
+                <ImagePlus size={20} />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-lg font-semibold text-x-text">
+                  {isDuplicateMine ? "You already reported this issue" : "This issue already exists"}
+                </h2>
+                <p className="mt-1 text-sm text-x-text-secondary">
+                  {isDuplicateMine
+                    ? "A similar report was already created by you in this ward. Submit a new report only if this is a different issue."
+                    : `A similar report was already filed for ward ${duplicateReport.ward_number}. You can endorse it or continue creating a new report.`}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-[1.5rem] border border-x-border bg-x-bg p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-x-text">{duplicateReport.title}</p>
+                  <p className="mt-2 text-sm text-x-text-secondary line-clamp-3">{duplicateReport.description || "No description provided."}</p>
+                </div>
+                <span className="rounded-full bg-x-bg-secondary px-3 py-1 text-xs font-semibold text-x-text-secondary">
+                  {new Date(duplicateReport.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+
+              <div className="mt-4 grid grid-cols-3 gap-3 text-center text-xs text-x-text-secondary">
+                <div className="rounded-2xl border border-x-border bg-x-bg-secondary p-3">
+                  <p className="font-semibold text-x-text">{duplicateReport.upvotes || 0}</p>
+                  <p>Upvotes</p>
+                </div>
+                <div className="rounded-2xl border border-x-border bg-x-bg-secondary p-3">
+                  <p className="font-semibold text-x-text">{duplicateReport.comments || 0}</p>
+                  <p>Comments</p>
+                </div>
+                <div className="rounded-2xl border border-x-border bg-x-bg-secondary p-3">
+                  <p className="font-semibold text-x-text">{duplicateReport.downvotes || 0}</p>
+                  <p>Downvotes</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              {!isDuplicateMine && (
+                <button
+                  type="button"
+                  onClick={handleEndorseReport}
+                  disabled={modalLoading}
+                  className="x-btn x-btn-primary x-btn-full py-3"
+                >
+                  {modalLoading && <Loader2 className="animate-spin" size={16} />}
+                  {modalLoading ? "Endorsing..." : "Endorse existing report"}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleCreateAnyway}
+                disabled={modalLoading}
+                className="x-btn x-btn-secondary x-btn-full py-3"
+              >
+                {modalLoading && <Loader2 className="animate-spin" size={16} />}
+                {modalLoading ? "Creating..." : "Create new report anyway"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

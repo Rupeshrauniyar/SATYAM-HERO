@@ -17,11 +17,13 @@ const {
   downvoteReport,
   updateStatus,
   getMyReport,
+  checkDuplicateReport,
 } = require("../Controllers/reportController.js");
 const UserMiddleware = require("../Middlewares/UserMiddleware.js");
 const router = express.Router();
 
 router.post("/create", UserMiddleware, createReport);
+router.post("/check-duplicate", UserMiddleware, checkDuplicateReport);
 router.post("/upvote", UserMiddleware, upvoteReport);
 router.post("/downvote", UserMiddleware, downvoteReport);
 router.post("/updateReportStatus", UserMiddleware, updateStatus);

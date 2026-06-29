@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Loader2, Send, X, Heart, ChevronDown } from "lucide-react";
 import EngagePill from "./EngagePill";
+import Avatar from "./Avatar";
 
 function timeAgo(date) {
   const seconds = Math.floor((new Date() - new Date(date)) / 1000);
@@ -255,9 +256,11 @@ export default function CommentSheet({
 
                 return (
                   <div key={comment._id} className="flex gap-3">
-                      <div className="x-avatar w-9 h-9 text-sm shrink-0">
-                      {comment.userId?.name?.trim()?.charAt(0)?.toUpperCase() || "?"}
-                    </div>
+                      <Avatar
+                      src={comment.userId?.profilePicture || comment.userId?.profile_picture}
+                      label={comment.userId?.name || "User"}
+                      className="w-9 h-9 text-sm shrink-0"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="x-panel !p-3 !rounded-2xl">
                         <div className="flex items-center gap-2">
@@ -308,7 +311,11 @@ export default function CommentSheet({
                         <div className="mt-3 space-y-3">
                           {replyCache[comment._id].map((r) => (
                             <div key={r._id} className="flex gap-3 items-start">
-                              <div className="x-avatar w-8 h-8 text-xs shrink-0">{r.userId?.name?.trim()?.charAt(0)?.toUpperCase() || "?"}</div>
+                              <Avatar
+                                src={r.userId?.profilePicture || r.userId?.profile_picture}
+                                label={r.userId?.name || "User"}
+                                className="w-8 h-8 text-xs shrink-0"
+                              />
                               <div className="flex-1 min-w-0">
                                 <div className="x-panel !p-3 !rounded-2xl">
                                   <div className="flex items-center gap-2">

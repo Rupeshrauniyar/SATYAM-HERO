@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useContext } from "react";
 import axios from "axios";
+import { useSearchParams } from "react-router-dom";
 import { applyOptimisticVote } from "../utils/voteHelpers";
 import { Loader2 } from "lucide-react";
 import ReportFeedItem from "../components/ReportFeedItem";
@@ -11,18 +12,48 @@ import { useTranslation } from "../utils/translations";
 
 const Alerts = () => {
   const { user, setUser } = useContext(AppContext);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState({});
-  const [commentReport, setCommentReport] = useState(null);
-  const [insightsReport, setInsightsReport] = useState(null);
-  const [shareReport, setShareReport] = useState(null);
   const t = useTranslation();
 
   const FEED_TABS = { PUBLIC: "public", AUTHORITY: "authority" };
+
+  const commentReportId = searchParams.get("comments");
+  const shareReportId = searchParams.get("share");
+  const insightsReportId = searchParams.get("insights");
+
+  const commentReport = commentReportId ? alerts.find((a) => a._id === commentReportId) : null;
+  const shareReport = shareReportId ? alerts.find((a) => a._id === shareReportId) : null;
+  const insightsReport = insightsReportId ? alerts.find((a) => a._id === insightsReportId) : null;
+
+  const setCommentReport = (report) => {
+    if (report?._id) {
+      setSearchParams((prev) => { prev.set("comments", report._id); return prev; });
+    } else {
+      setSearchParams((prev) => { prev.delete("comments"); return prev; });
+    }
+  };
+
+  const setShareReport = (report) => {
+    if (report?._id) {
+      setSearchParams((prev) => { prev.set("share", report._id); return prev; });
+    } else {
+      setSearchParams((prev) => { prev.delete("share"); return prev; });
+    }
+  };
+
+  const setInsightsReport = (report) => {
+    if (report?._id) {
+      setSearchParams((prev) => { prev.set("insights", report._id); return prev; });
+    } else {
+      setSearchParams((prev) => { prev.delete("insights"); return prev; });
+    }
+  };
 
   useEffect(() => {
     const fetchAlerts = async () => {
