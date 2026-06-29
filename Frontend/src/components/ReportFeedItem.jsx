@@ -38,6 +38,7 @@ export default function ReportFeedItem({
   timeAgo,
   statusBadge,
   innerRef,
+  hideStatusChanger,
 }) {
   const upvotes = issue.upvotes || [];
   const downvotes = issue.downvotes || [];
@@ -117,9 +118,12 @@ export default function ReportFeedItem({
             {isMine && (
               <span className="text-x-accent text-xs font-semibold">Your report</span>
             )}
-            {issue.changer && (
-              <span className="text-x-text-secondary text-xs">
-                · in {issue.status} by {issue.changer.name}
+            {!hideStatusChanger && issue.changer && issue.changer.role && (
+              <span className="text-xs flex items-center gap-1">
+                <span className="text-x-text-secondary">·</span>
+                <span className="text-x-accent font-semibold text-green-500">{issue.changer.name}</span>
+                <span className="text-x-text-secondary">updated to</span>
+                <span className="text-x-accent font-semibold text-blue-500">{issue.status}...</span>
               </span>
             )}
           </div>
@@ -211,11 +215,16 @@ export default function ReportFeedItem({
             </div>
           )}
 
-          {issue.changer && (
-            <p className="text-x-text-secondary text-sm mt-2">
-              Status updated to <strong>{issue.status}</strong> by {issue.changer.name}
-            </p>
-          )}
+          {/* {issue.changer && issue.changer.role && (
+            <div className="bg-x-accent/10 border border-x-accent/30 rounded-lg px-3 py-2 mt-3 flex items-center gap-2">
+              <div className="flex-1 text-sm">
+                <span className="text-x-text-secondary">Status updated to </span>
+                <strong className="text-x-accent">{issue.status}</strong>
+                <span className="text-x-text-secondary"> by </span>
+                <strong className="text-x-accent font-bold">{issue.changer.name}</strong>
+              </div>
+            </div>
+          )} */}
 
           {onUpvote || onDownvote || onComment || onShare || onInsights ? (
             <div className="x-action-bar">

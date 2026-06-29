@@ -354,6 +354,7 @@ const Alerts = () => {
               onInsights={setInsightsReport}
               statusBadge={statusBadge}
               timeAgo={timeAgo}
+              hideStatusChanger={true}
             />
           ))
         )}

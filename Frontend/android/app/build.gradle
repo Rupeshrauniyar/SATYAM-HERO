@@ -22,6 +22,16 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+
+    // Fix: Automatically remove duplicate resources before merging
+    applicationVariants.all { variant ->
+        variant.mergeResourcesProvider.configure {
+            doFirst {
+                delete "${projectDir}/src/main/res/drawable/splash.png"
+                delete "${projectDir}/src/main/res/drawable/splash_logo.jpeg"
+            }
+        }
+    }
 }
 
 repositories {

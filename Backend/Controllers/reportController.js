@@ -183,6 +183,7 @@ const getReport = async (req, res) => {
           createdAt: 1,
           shares: 1,
           userId: 1,
+          changer: 1,
           upvotesCount: { $size: { $ifNull: ["$upvotes", []] } },
           downvotesCount: { $size: { $ifNull: ["$downvotes", []] } },
           commentsCount: { $size: { $ifNull: ["$comments", []] } },
@@ -198,6 +199,15 @@ const getReport = async (req, res) => {
       },
       { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
       {
+        $lookup: {
+          from: "users",
+          localField: "changer",
+          foreignField: "_id",
+          as: "changerUser",
+        },
+      },
+      { $unwind: { path: "$changerUser", preserveNullAndEmptyArrays: true } },
+      {
         $project: {
           title: 1,
           description: 1,
@@ -212,6 +222,7 @@ const getReport = async (req, res) => {
           commentsCount: 1,
           userId: { name: "$user.name", role: "$user.role", _id: "$user._id", profilePicture: "$user.profilePicture" },
           user: { name: "$user.name", role: "$user.role", _id: "$user._id", profilePicture: "$user.profilePicture" },
+          changer: { name: "$changerUser.name", role: "$changerUser.role", _id: "$changerUser._id", profilePicture: "$changerUser.profilePicture" },
         },
       },
     ];
@@ -514,6 +525,7 @@ const searchReports = async (req, res) => {
           createdAt: 1,
           shares: 1,
           userId: 1,
+          changer: 1,
           upvotesCount: { $size: { $ifNull: ["$upvotes", []] } },
           downvotesCount: { $size: { $ifNull: ["$downvotes", []] } },
           commentsCount: { $size: { $ifNull: ["$comments", []] } },
@@ -521,7 +533,9 @@ const searchReports = async (req, res) => {
       },
       { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "user" } },
       { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-      { $project: { title: 1, description: 1, category: 1, ward_number: 1, status: 1, media: 1, createdAt: 1, shares: 1, upvotesCount: 1, downvotesCount: 1, commentsCount: 1, user: { name: "$user.name", role: "$user.role", _id: "$user._id" } } },
+      { $lookup: { from: "users", localField: "changer", foreignField: "_id", as: "changerUser" } },
+      { $unwind: { path: "$changerUser", preserveNullAndEmptyArrays: true } },
+      { $project: { title: 1, description: 1, category: 1, ward_number: 1, status: 1, media: 1, createdAt: 1, shares: 1, upvotesCount: 1, downvotesCount: 1, commentsCount: 1, user: { name: "$user.name", role: "$user.role", _id: "$user._id" }, changer: { name: "$changerUser.name", role: "$changerUser.role", _id: "$changerUser._id", profilePicture: "$changerUser.profilePicture" } } },
     ];
 
     const Reports = await Report.aggregate(pipeline);
@@ -801,6 +815,7 @@ const getMyReport = async (req, res) => {
     const reports = await Report.find({ userId })
       .sort({ createdAt: -1 })
       .populate("userId", "name role profilePicture")
+      .populate("changer", "name role profilePicture")
       .lean();
 
     const includeRecent = req.query.recent === "1";
@@ -957,7 +972,7 @@ const updateStatus = async (req, res) => {
         changer: userId,
       },
       { new: true },
-    );
+    ).populate({ path: "changer", select: "name role profilePicture" });
 
     const sourceUser = await User.findById(userId).select("name");
     if (report && report.userId.toString() !== userId.toString()) {
@@ -970,7 +985,7 @@ const updateStatus = async (req, res) => {
       });
     }
 
-    return res.status(200).json({ success: true });
+    return res.status(200).json({ success: true, report });
   } catch (err) {
     console.log(err);
     return res.status(500).json({ success: false });

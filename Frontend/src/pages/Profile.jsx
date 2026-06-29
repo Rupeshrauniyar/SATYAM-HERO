@@ -266,7 +266,7 @@ export default function Profile() {
             </div>
           </div>
 
-          <Link to="/profile/edit" className="x-btn x-btn-primary x-btn-sm h-fit">
+          <Link to={user?.role === "gov" ? "/gov/profile/edit" : "/profile/edit"} className="x-btn x-btn-primary x-btn-sm h-fit">
             Edit profile
           </Link>
         </div>

@@ -223,15 +223,13 @@ const Home = () => {
   const saveStatusChange = async () => {
     try {
       const token = localStorage.getItem("token");
-      await axios.post(
+      const res = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/report/updateReportStatus`,
         { status: selectedStatus, reportId: confirmIssue._id, token },
       );
-      updateIssueInState(confirmIssue._id, (issue) => ({
-        ...issue,
-        status: selectedStatus,
-        changer: { name: (user && user.name) || "Government" },
-      }));
+      if (res.status === 200 && res.data.success && res.data.report) {
+        updateIssueInState(confirmIssue._id, () => res.data.report);
+      }
     } catch (err) {
       console.error(err);
       alert("Failed to update status");
@@ -367,6 +365,7 @@ const Home = () => {
     onUpvote: handleUpvote, onDownvote: handleDownvote,
     onComment: setCommentReport, onShare: setShareReport, onInsights: setInsightsReport,
     ...(user && user.role === "gov" ? { onChangeStatus: handleStatusChange } : {}),
+    hideStatusChanger: feedTab === FEED_TABS.AUTHORITY,
   };
 
   const showEmpty =

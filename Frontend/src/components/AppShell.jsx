@@ -30,7 +30,7 @@ const GOV_NAV = [
   { to: "/gov", icon: Home, label: "Home" },
   { to: "/gov/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/gov/create", icon: PlusSquare, label: "Create" },
-  { to: "/gov/search", icon: Search, label: "Search" },
+  { to: "/gov/alerts", icon: Siren, label: "Alerts" },
   { to: "/gov/profile", icon: User2, label: "Profile" },
 ];
 
@@ -86,8 +86,8 @@ export default function AppShell({ children }) {
         { to: "/gov", icon: Home, label: t("home") },
         { to: "/gov/dashboard", icon: LayoutDashboard, label: t("dashboard") },
         { to: "/gov/create", icon: PlusSquare, label: t("create") },
-        { to: "/gov/search", icon: Search, label: t("search") },
-        // { to: "/alerts", icon: Siren, label: t("alerts") },
+        // { to: "/gov/search", icon: Search, label: t("search") },
+        { to: "/gov/alerts", icon: Siren, label: t("alerts") },
         { to: "/gov/profile", icon: User2, label: t("profile") },
       ]
     : [

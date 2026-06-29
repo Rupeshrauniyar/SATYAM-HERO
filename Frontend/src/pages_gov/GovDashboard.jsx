@@ -101,15 +101,13 @@ const GovDashboard = () => {
 
   const saveStatusChange = async () => {
     try {
-      await axios.post(
+      const res = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/report/updateReportStatus`,
         { status: selectedStatus, reportId: confirmIssue._id, token },
       );
-      setIssues((prev) =>
-        prev.map((i) =>
-          i._id === confirmIssue._id ? { ...i, status: selectedStatus } : i,
-        ),
-      );
+      if (res.status === 200 && res.data.success && res.data.report) {
+        updateIssueInState(confirmIssue._id, () => res.data.report);
+      }
     } catch (err) {
       console.error(err);
     } finally {
